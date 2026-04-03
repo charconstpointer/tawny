@@ -36,6 +36,12 @@ export function ServiceFilter() {
     if (key.name === "k" || key.name === "up") {
       setCursor((c) => clampCursor(c - 1))
     }
+    // g / G — go to top / bottom
+    if (key.shift && key.name === "g") {
+      setCursor(services().length)
+    } else if (key.name === "g") {
+      setCursor(0)
+    }
     if (key.name === "return" || key.name === "space") {
       const idx = cursor()
       if (idx === 0) {

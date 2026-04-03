@@ -87,16 +87,44 @@ export function SpanDetail() {
     return r
   })
 
+  const maxScroll = () => Math.max(0, rows().length - visibleHeight)
+
   useKeyboard((key) => {
     if (route.data.type !== "span-detail") return
 
+    // j/k — scroll down/up
     if (key.name === "j" || key.name === "down") {
-      setScrollOffset((o) => Math.min(o + 1, Math.max(0, rows().length - visibleHeight)))
+      setScrollOffset((o) => Math.min(o + 1, maxScroll()))
     }
     if (key.name === "k" || key.name === "up") {
       setScrollOffset((o) => Math.max(0, o - 1))
     }
-    if (key.name === "escape") {
+    // g / G — scroll to top / bottom
+    if (key.shift && key.name === "g") {
+      setScrollOffset(maxScroll())
+    } else if (key.name === "g") {
+      setScrollOffset(0)
+    }
+    // Ctrl+d / Ctrl+u — half page down / up
+    if (key.ctrl && key.name === "d") {
+      const half = Math.floor(visibleHeight / 2)
+      setScrollOffset((o) => Math.min(o + half, maxScroll()))
+    }
+    if (key.ctrl && key.name === "u") {
+      const half = Math.floor(visibleHeight / 2)
+      setScrollOffset((o) => Math.max(0, o - half))
+    }
+    // Ctrl+f / Ctrl+b — full page down / up
+    if (key.ctrl && key.name === "f") {
+      const page = visibleHeight - 2
+      setScrollOffset((o) => Math.min(o + page, maxScroll()))
+    }
+    if (key.ctrl && key.name === "b") {
+      const page = visibleHeight - 2
+      setScrollOffset((o) => Math.max(0, o - page))
+    }
+    // h / Esc — go back
+    if (key.name === "escape" || (!key.shift && !key.ctrl && key.name === "h")) {
       route.back()
     }
     if (key.name === "q") {

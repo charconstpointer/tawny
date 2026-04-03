@@ -8,6 +8,9 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
     const [selectedServices, setSelectedServices] = createSignal<Set<string>>(new Set())
     const [showServiceFilter, setShowServiceFilter] = createSignal(false)
     const [showSearch, setShowSearch] = createSignal(false)
+    const [minSpans, setMinSpans] = createSignal(0)
+
+    const MIN_SPANS_THRESHOLDS = [0, 3, 5, 10, 20, 50]
 
     return {
       get searchQuery() {
@@ -21,6 +24,9 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
       },
       get showSearch() {
         return showSearch()
+      },
+      get minSpans() {
+        return minSpans()
       },
 
       setSearchQuery(q: string) {
@@ -52,6 +58,12 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
       closeSearch() {
         setShowSearch(false)
         setSearchQuery("")
+      },
+      cycleMinSpans() {
+        const cur = minSpans()
+        const idx = MIN_SPANS_THRESHOLDS.indexOf(cur)
+        const next = MIN_SPANS_THRESHOLDS[(idx + 1) % MIN_SPANS_THRESHOLDS.length]!
+        setMinSpans(next)
       },
     }
   },

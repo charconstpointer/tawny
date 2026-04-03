@@ -31,9 +31,24 @@ export function TraceList() {
   const [scrollOffset, setScrollOffset] = createSignal(0)
   // Terminal height minus chrome: title(1) + header(1) + footer(1) + statusbar(1) + search(1) = 5
   const visibleHeight = () => Math.max(5, (process.stdout.rows ?? 30) - 5)
+  // Fixed column widths: traceId(10) + spans(8) + duration(12) + time(14) + status(8) + padding(2) = 54
+  const FIXED_COLS = 54
+  // ROOT SPAN gets ~60% of the flexible space, SERVICES gets the rest
+  const rootSpanWidth = () => {
+    const flex = Math.max(0, (process.stdout.columns ?? 120) - FIXED_COLS)
+    return Math.max(16, Math.floor(flex * 0.6))
+  }
+  const servicesWidth = () => {
+    const cols = process.stdout.columns ?? 120
+    return Math.max(8, cols - FIXED_COLS - rootSpanWidth())
+  }
 
   const filtered = createMemo(() => {
     let list = traces.all
+    const min = filter.minSpans
+    if (min > 0) {
+      list = list.filter((t) => t.spanCount >= min)
+    }
     const services = filter.selectedServices
     if (services.size > 0) {
       list = list.filter((t) => t.services.some((s) => services.has(s)))
@@ -73,6 +88,7 @@ export function TraceList() {
       return
     }
 
+    // j/k — single step down/up
     if (key.name === "j" || key.name === "down") {
       const next = clampCursor(cursor() + 1)
       setCursor(next)
@@ -87,14 +103,57 @@ export function TraceList() {
         setScrollOffset(next)
       }
     }
-    if (key.name === "g") {
-      setCursor(0)
-      setScrollOffset(0)
-    }
+    // g / G — go to top / bottom
     if (key.shift && key.name === "g") {
       const last = Math.max(0, filtered().length - 1)
       setCursor(last)
       setScrollOffset(Math.max(0, last - visibleHeight() + 2))
+    } else if (key.name === "g") {
+      setCursor(0)
+      setScrollOffset(0)
+    }
+    // Ctrl+d / Ctrl+u — half page down / up
+    if (key.ctrl && key.name === "d") {
+      const half = Math.floor(visibleHeight() / 2)
+      const maxScroll = Math.max(0, filtered().length - visibleHeight())
+      setCursor(clampCursor(cursor() + half))
+      setScrollOffset(Math.min(scrollOffset() + half, maxScroll))
+    }
+    if (key.ctrl && key.name === "u") {
+      const half = Math.floor(visibleHeight() / 2)
+      setCursor(clampCursor(cursor() - half))
+      setScrollOffset(Math.max(0, scrollOffset() - half))
+    }
+    // Ctrl+f / Ctrl+b — full page down / up
+    if (key.ctrl && key.name === "f") {
+      const page = visibleHeight() - 2
+      const maxScroll = Math.max(0, filtered().length - visibleHeight())
+      const nextScroll = Math.min(scrollOffset() + page, maxScroll)
+      setScrollOffset(nextScroll)
+      setCursor(clampCursor(nextScroll))
+    }
+    if (key.ctrl && key.name === "b") {
+      const page = visibleHeight() - 2
+      const nextScroll = Math.max(0, scrollOffset() - page)
+      setScrollOffset(nextScroll)
+      setCursor(clampCursor(nextScroll + visibleHeight() - 2))
+    }
+    // H / M / L — cursor to top / middle / bottom of visible area
+    if (key.shift && key.name === "h") {
+      setCursor(clampCursor(scrollOffset()))
+    }
+    if (key.shift && key.name === "m") {
+      setCursor(clampCursor(scrollOffset() + Math.floor(visibleHeight() / 2)))
+    }
+    if (key.shift && key.name === "l") {
+      setCursor(clampCursor(Math.min(scrollOffset() + visibleHeight() - 2, filtered().length - 1)))
+    }
+    // l / Enter — open trace
+    if (!key.shift && !key.ctrl && key.name === "l") {
+      const item = filtered()[cursor()]
+      if (item) {
+        route.navigate({ type: "trace-detail", traceId: item.traceId })
+      }
     }
     if (key.name === "return") {
       const item = filtered()[cursor()]
@@ -105,8 +164,13 @@ export function TraceList() {
     if (key.name === "slash" || (key.name === "/" as string)) {
       filter.openSearch()
     }
-    if (key.name === "f") {
+    if (!key.ctrl && key.name === "f") {
       filter.toggleServiceFilter()
+    }
+    if (key.name === "n") {
+      filter.cycleMinSpans()
+      setCursor(0)
+      setScrollOffset(0)
     }
     if (key.name === "q") {
       process.exit(0)
@@ -138,6 +202,9 @@ export function TraceList() {
       >
         <box width={10}>
           <text fg={theme.headerFg}>TRACE ID</text>
+        </box>
+        <box width={rootSpanWidth()}>
+          <text fg={theme.headerFg}>ROOT SPAN</text>
         </box>
         <box width={8}>
           <text fg={theme.headerFg}>SPANS</text>
@@ -175,6 +242,9 @@ export function TraceList() {
                 <box width={10}>
                   <text fg={theme.traceId}>{shortId(trace.traceId)}</text>
                 </box>
+                <box width={rootSpanWidth()}>
+                  <text fg={theme.headerFg}>{truncate(trace.rootSpan?.name ?? "(no root)", rootSpanWidth() - 1)}</text>
+                </box>
                 <box width={8}>
                   <text fg={theme.spanCount}>{String(trace.spanCount).padStart(5)}</text>
                 </box>
@@ -190,7 +260,7 @@ export function TraceList() {
                   </text>
                 </box>
                 <box flexGrow={1}>
-                  <text fg={theme.service}>{truncate(trace.services.join(", "), (process.stdout.columns ?? 120) - 54)}</text>
+                  <text fg={theme.service}>{truncate(trace.services.join(", "), servicesWidth() - 1)}</text>
                 </box>
               </box>
             )
@@ -202,6 +272,7 @@ export function TraceList() {
       <box width="100%" height={1} flexDirection="row" backgroundColor={theme.header} paddingLeft={1}>
         <text fg={theme.dim}>
           {filtered().length} traces
+          {filter.minSpans > 0 ? ` (min ${filter.minSpans} spans)` : ""}
           {filter.selectedServices.size > 0 ? ` (filtered by ${filter.selectedServices.size} services)` : ""}
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
           {filtered().length > 0 ? ` | ${cursor() + 1}/${filtered().length}` : ""}

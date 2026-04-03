@@ -146,6 +146,7 @@ export function TraceDetail() {
       return
     }
 
+    // j/k — single step down/up
     if (key.name === "j" || key.name === "down") {
       const next = clampCursor(cursor() + 1)
       setCursor(next)
@@ -158,6 +159,62 @@ export function TraceDetail() {
       setCursor(next)
       if (next < scrollOffset()) {
         setScrollOffset(next)
+      }
+    }
+    // g / G — go to top / bottom
+    if (key.shift && key.name === "g") {
+      const last = Math.max(0, flatSpans().length - 1)
+      setCursor(last)
+      setScrollOffset(Math.max(0, last - visibleHeight() + 2))
+    } else if (key.name === "g") {
+      setCursor(0)
+      setScrollOffset(0)
+    }
+    // Ctrl+d / Ctrl+u — half page down / up
+    if (key.ctrl && key.name === "d") {
+      const half = Math.floor(visibleHeight() / 2)
+      const maxScroll = Math.max(0, flatSpans().length - visibleHeight())
+      setCursor(clampCursor(cursor() + half))
+      setScrollOffset(Math.min(scrollOffset() + half, maxScroll))
+    }
+    if (key.ctrl && key.name === "u") {
+      const half = Math.floor(visibleHeight() / 2)
+      setCursor(clampCursor(cursor() - half))
+      setScrollOffset(Math.max(0, scrollOffset() - half))
+    }
+    // Ctrl+f / Ctrl+b — full page down / up
+    if (key.ctrl && key.name === "f") {
+      const page = visibleHeight() - 2
+      const maxScroll = Math.max(0, flatSpans().length - visibleHeight())
+      const nextScroll = Math.min(scrollOffset() + page, maxScroll)
+      setScrollOffset(nextScroll)
+      setCursor(clampCursor(nextScroll))
+    }
+    if (key.ctrl && key.name === "b") {
+      const page = visibleHeight() - 2
+      const nextScroll = Math.max(0, scrollOffset() - page)
+      setScrollOffset(nextScroll)
+      setCursor(clampCursor(nextScroll + visibleHeight() - 2))
+    }
+    // H / M / L — cursor to top / middle / bottom of visible area
+    if (key.shift && key.name === "h") {
+      setCursor(clampCursor(scrollOffset()))
+    }
+    if (key.shift && key.name === "m") {
+      setCursor(clampCursor(scrollOffset() + Math.floor(visibleHeight() / 2)))
+    }
+    if (key.shift && key.name === "l") {
+      setCursor(clampCursor(Math.min(scrollOffset() + visibleHeight() - 2, flatSpans().length - 1)))
+    }
+    // l / Enter — open span detail
+    if (!key.shift && !key.ctrl && key.name === "l") {
+      const item = flatSpans()[cursor()]
+      if (item && route.data.type === "trace-detail") {
+        route.navigate({
+          type: "span-detail",
+          traceId: route.data.traceId,
+          spanId: item.span.spanId,
+        })
       }
     }
     if (key.name === "return") {
@@ -176,7 +233,8 @@ export function TraceDetail() {
         toggleCollapse(item.span.spanId)
       }
     }
-    if (key.name === "escape") {
+    // h / Esc — go back
+    if (key.name === "escape" || (!key.shift && !key.ctrl && key.name === "h")) {
       route.back()
     }
     if (key.name === "slash" || (key.name === "/" as string)) {
@@ -202,15 +260,14 @@ export function TraceDetail() {
   }
 
   const treePrefix = (depth: number, hasChildren: boolean, isCollapsed: boolean) => {
-    let prefix = ""
-    if (depth > 0) {
-      prefix = "  ".repeat(depth - 1) + (hasChildren ? "" : "\u251C\u2500")
-    }
+    const indent = "  ".repeat(depth)
     if (hasChildren) {
-      if (depth > 0) prefix += isCollapsed ? "\u25B6 " : "\u25BC "
-      else prefix = isCollapsed ? "\u25B6 " : "\u25BC "
+      return indent + (isCollapsed ? "\u25B6 " : "\u25BC ")
     }
-    return prefix
+    if (depth > 0) {
+      return indent + "\u251C\u2500"
+    }
+    return ""
   }
 
   // Column widths for the left panel

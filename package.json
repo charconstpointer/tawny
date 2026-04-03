@@ -2,6 +2,13 @@
   "name": "opentui-traces",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "opentui-traces": "bin/cli.ts"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
   "scripts": {
     "dev": "bun run src/index.tsx",
     "start": "bun run src/index.tsx"
