@@ -176,7 +176,7 @@ a:hover{text-decoration:underline}
 .wf-ruler-tick{position:absolute;bottom:0;border-left:1px solid var(--border);height:8px;padding-left:4px;white-space:nowrap}
 
 /* Span detail panel */
-.span-panel{border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;flex-shrink:0;width:420px;position:sticky;top:0;align-self:flex-start;max-height:70vh;border-radius:0 0 0 8px}
+.span-panel{border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;position:fixed;right:0;top:0;bottom:0;width:420px;z-index:20;box-shadow:-4px 0 16px rgba(0,0,0,0.4)}
 .span-panel-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .span-panel-header .close-btn{margin-left:auto;cursor:pointer;color:var(--text-dim);font-size:16px;background:none;border:none;font:inherit;padding:2px 6px;border-radius:3px}
 .span-panel-header .close-btn:hover{background:var(--hover);color:var(--text)}
@@ -192,7 +192,7 @@ a:hover{text-decoration:underline}
 
 /* Responsive waterfall layout */
 .waterfall-container{display:flex;flex:1}
-.waterfall-scroll{flex:1;overflow:auto}
+.waterfall-scroll{flex:1;overflow:visible}
 .no-traces{padding:40px;text-align:center;color:var(--text-dim)}
 
 /* Service filter dropdown */
