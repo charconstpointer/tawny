@@ -6,6 +6,7 @@ import { FilterProvider, useFilter } from "./context/filter"
 import { TraceList } from "./component/trace-list"
 import { TraceDetail } from "./component/trace-detail"
 import { SpanDetail } from "./component/span-detail"
+import { TraceFlamegraph } from "./component/trace-flamegraph"
 import { ServiceFilter } from "./component/service-filter"
 import { StatusBar } from "./component/status-bar"
 import type { TraceSummary } from "./types"
@@ -44,6 +45,9 @@ function AppContent() {
           </Match>
           <Match when={route.data.type === "span-detail"}>
             <SpanDetail />
+          </Match>
+          <Match when={route.data.type === "trace-flamegraph"}>
+            <TraceFlamegraph />
           </Match>
         </Switch>
       </box>

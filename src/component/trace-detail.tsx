@@ -240,6 +240,11 @@ export function TraceDetail() {
     if (key.name === "slash" || (key.name === "/" as string)) {
       filter.openSearch()
     }
+    if (!key.shift && !key.ctrl && key.name === "f") {
+      if (route.data.type === "trace-detail") {
+        route.navigate({ type: "trace-flamegraph", traceId: route.data.traceId })
+      }
+    }
     if (key.name === "q") {
       process.exit(0)
     }

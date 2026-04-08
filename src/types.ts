@@ -134,3 +134,4 @@ export type Route =
   | { type: "trace-list" }
   | { type: "trace-detail"; traceId: string }
   | { type: "span-detail"; traceId: string; spanId: string }
+  | { type: "trace-flamegraph"; traceId: string }

@@ -17,6 +17,8 @@ export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
       back() {
         if (store.type === "span-detail") {
           setStore({ type: "trace-detail", traceId: store.traceId })
+        } else if (store.type === "trace-flamegraph") {
+          setStore({ type: "trace-detail", traceId: store.traceId })
         } else if (store.type === "trace-detail") {
           setStore({ type: "trace-list" })
         }
