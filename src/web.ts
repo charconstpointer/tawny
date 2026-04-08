@@ -463,6 +463,7 @@ let selectedServices = new Set(); // empty = all selected
 let minSpans = 0;
 let errorOnly = false;
 let minDurationMs = 0;
+let displayLimit = 100;
 let detailMatchIndex = 0;
 
 // === Stats ===
@@ -551,6 +552,7 @@ function renderTraceList() {
 
   document.getElementById("search-input").addEventListener("input", e => {
     searchQuery = e.target.value;
+    displayLimit = 100;
     renderTableBody();
   });
 
@@ -561,17 +563,20 @@ function renderTraceList() {
   document.getElementById("minspans-btn").addEventListener("click", () => {
     const t = [0, 3, 5, 10, 20, 50];
     minSpans = t[(t.indexOf(minSpans) + 1) % t.length];
+    displayLimit = 100;
     render();
   });
 
   document.getElementById("errors-btn").addEventListener("click", () => {
     errorOnly = !errorOnly;
+    displayLimit = 100;
     render();
   });
 
   document.getElementById("duration-btn").addEventListener("click", () => {
     const t = [0, 10, 50, 100, 500, 1000, 5000];
     minDurationMs = t[(t.indexOf(minDurationMs) + 1) % t.length];
+    displayLimit = 100;
     render();
   });
 
@@ -628,9 +633,10 @@ function renderTableBody() {
     tbody.innerHTML = '<tr><td colspan="7" class="no-traces">⊘ No matching traces<br><span style="font-size:11px">Try adjusting filters or search query</span></td></tr>';
     return;
   }
+  const visible = filtered.slice(0, displayLimit);
   let html = "";
-  for (let i = 0; i < filtered.length; i++) {
-    const t = filtered[i];
+  for (let i = 0; i < visible.length; i++) {
+    const t = visible[i];
     const statusCls = t.errorCount > 0 ? "badge-error" : "badge-ok";
     const statusText = t.errorCount > 0 ? t.errorCount + " error" + (t.errorCount > 1 ? "s" : "") : "OK";
     const svcs = t.services.map(s => {
@@ -648,10 +654,13 @@ function renderTableBody() {
       + '<td class="col-services">' + svcs + "</td>"
       + "</tr>";
   }
+  if (filtered.length > displayLimit) html += '<tr><td colspan="7" class="no-traces" style="cursor:pointer;color:var(--accent)" id="show-more-btn">Show more (' + (filtered.length - displayLimit) + ' remaining)</td></tr>';
   tbody.innerHTML = html;
   tbody.querySelectorAll("tr.row").forEach(tr => {
     tr.addEventListener("click", () => openTrace(tr.dataset.trace));
   });
+  const showMoreBtn = document.getElementById("show-more-btn");
+  if (showMoreBtn) showMoreBtn.addEventListener("click", () => { displayLimit += 100; renderTableBody(); });
 }
 
 function renderServiceFilter() {
@@ -665,6 +674,7 @@ function renderServiceFilter() {
   drop.innerHTML = html;
   document.getElementById("svc-clear").addEventListener("click", () => {
     selectedServices.clear();
+    displayLimit = 100;
     renderTraceList();
   });
   drop.querySelectorAll("input[type=checkbox]").forEach(cb => {
@@ -685,6 +695,7 @@ function renderServiceFilter() {
       }
       // If all are selected again, clear to mean "all"
       if (selectedServices.size === allServices.length) selectedServices.clear();
+      displayLimit = 100;
       renderTableBody();
       // Update button text
       const btn = document.getElementById("svc-filter-btn");
