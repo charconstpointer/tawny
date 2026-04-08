@@ -51,3 +51,8 @@
 ## [2026-04-09] Span detail viewport sizing
 - `src/component/span-detail.tsx` now mirrors `trace-list.tsx` by deriving visible rows from `process.stdout.rows`
 - When terminal height changes, scroll math and footer pagination stay aligned because every `visibleHeight` use now calls the helper
+
+## [2026-04-09] Filter context expansion
+- `src/context/filter.tsx` follows the existing signal/getter/action pattern cleanly for new filter state
+- Cycling selectors are easiest to keep consistent when the threshold arrays stay module-local and the next value is derived with `indexOf` + modulo
+- New context fields should be exported directly from the `return { ... }` object so downstream components can consume them without extra plumbing
