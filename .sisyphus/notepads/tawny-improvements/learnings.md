@@ -56,3 +56,36 @@
 - `src/context/filter.tsx` follows the existing signal/getter/action pattern cleanly for new filter state
 - Cycling selectors are easiest to keep consistent when the threshold arrays stay module-local and the next value is derived with `indexOf` + modulo
 - New context fields should be exported directly from the `return { ... }` object so downstream components can consume them without extra plumbing
+
+## [2026-04-09] T5 — Web runtime theme switching
+
+### CSS variable mapping (web.ts)
+The `:root` CSS custom properties in the generated HTML use different names than ThemeColors keys:
+- `--bg` ← `bg`
+- `--surface` ← `bgAlt`
+- `--hover` / `--selected` ← `bgHighlight` (both map to same value)
+- `--text` / `--text-bright` ← `fg` (both map to same value)
+- `--text-dim` ← `fgDim`
+- `--border` ← `border`
+- `--accent` ← `accent`
+- `--ok` ← `success`
+- `--warn` ← `warning`
+- `--error` ← `error`
+
+### Theme data embedding pattern
+- Build all theme data at TypeScript time in `buildThemeDataJson()` helper
+- Embed as `const THEME_DATA = ${themeDataJson}` in the script block
+- Include `const DEFAULT_THEME_ID = "${defaultThemeId}"` for reference
+
+### SERVICE_COLORS mutability pattern
+- Declared as `let SERVICE_COLORS = [...]` (not const) to enable `setTheme` to splice it
+- Use `SERVICE_COLORS.length = 0; for (c of palette) SERVICE_COLORS.push(c)` to mutate in place
+- `globalServiceColors` stays as a `const {}` but properties are mutated via `delete` + `Object.assign`
+
+### Init pattern for localStorage
+- IIFE in `// === Init ===` section reads saved theme, sets select value, applies theme if != default
+- Wire change handler from same IIFE
+
+### Playwright verification
+- `page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim())` to check computed bg
+- `dispatchEvent(new Event('change'))` to trigger select change listener programmatically

@@ -98,8 +98,40 @@ const logoBase64 = readFileSync(resolve(import.meta.dir, "../assets/logo.png")).
 
 // --- HTML generation ---
 
+function buildThemeDataJson(): string {
+  const out: Record<string, { colors: Record<string, string>; servicePalette: string[] }> = {}
+  for (const [id, theme] of Object.entries(THEMES)) {
+    out[id] = {
+      colors: {
+        bg: theme.colors.bg,
+        bgAlt: theme.colors.bgAlt,
+        bgHighlight: theme.colors.bgHighlight,
+        fg: theme.colors.fg,
+        fgDim: theme.colors.fgDim,
+        border: theme.colors.border,
+        accent: theme.colors.accent,
+        accent2: theme.colors.accent2,
+        accent3: theme.colors.accent3,
+        success: theme.colors.success,
+        warning: theme.colors.warning,
+        error: theme.colors.error,
+        headerBg: theme.colors.headerBg,
+        headerFg: theme.colors.headerFg,
+        barFill: theme.colors.barFill,
+      },
+      servicePalette: theme.servicePalette,
+    }
+  }
+  return JSON.stringify(out)
+    .replace(/<\//g, "<\\/")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+}
+
 export function generateHtml(traces: TraceSummary[], themeId?: string): string {
   const theme = THEMES[themeId ?? DEFAULT_THEME_ID] ?? THEMES[DEFAULT_THEME_ID]
+  const defaultThemeId = themeId ?? DEFAULT_THEME_ID
+  const themeDataJson = buildThemeDataJson()
   const data = JSON.stringify(traces.map(convertTrace))
     .replace(/<\//g, "<\\/")
     .replace(/\u2028/g, "\\u2028")
@@ -139,8 +171,11 @@ a:hover{text-decoration:underline}
 .header img{display:block;flex-shrink:0}
 .header h1{font-size:15px;font-weight:600;color:var(--text-bright)}
 .header .subtitle{color:var(--text-dim);font-size:12px}
-.header .stats{margin-left:auto;color:var(--text-dim);font-size:12px}
+.header .stats{color:var(--text-dim);font-size:12px}
 .header .stats.warn{color:var(--warn)}
+.header .theme-select{margin-left:auto;background:var(--bg);border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;font:inherit;font-size:12px;cursor:pointer;outline:none}
+.header .theme-select:hover{border-color:var(--accent);color:var(--text)}
+.header .theme-select:focus{border-color:var(--accent)}
 
 /* Toolbar */
 .toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
@@ -282,6 +317,14 @@ a:hover{text-decoration:underline}
   <img src="data:image/png;base64,${logoBase64}" alt="Tawny" width="28" height="28" style="border-radius:4px">
   <h1>Tawny</h1>
   <span class="subtitle">OpenTelemetry Trace Viewer</span>
+  <select id="theme-select" class="theme-select" style="margin-left:auto">
+    <option value="tokyo-night">Tokyo Night</option>
+    <option value="solarized-light">Solarized Light</option>
+    <option value="catppuccin-mocha">Catppuccin Mocha</option>
+    <option value="dracula">Dracula</option>
+    <option value="nord">Nord</option>
+    <option value="gruvbox-dark">Gruvbox Dark</option>
+  </select>
   <span class="stats" id="stats"></span>
 </div>
 <div id="toolbar-mount"></div>
@@ -294,8 +337,53 @@ const TRACES = ${data};
 const INSIGHTS = ${insights};
 const REPORT_BYTES = ${reportBytes};
 
+// === Theme data ===
+const THEME_DATA = ${themeDataJson};
+const DEFAULT_THEME_ID = "${defaultThemeId}";
+
+// CSS var name mapping: ThemeColors key → CSS custom property
+const THEME_CSS_MAP = {
+  bg: "--bg",
+  bgAlt: "--surface",
+  bgHighlight: "--hover",
+  fg: "--text",
+  fgDim: "--text-dim",
+  border: "--border",
+  accent: "--accent",
+  accent2: "--accent2",
+  accent3: "--accent3",
+  success: "--ok",
+  warning: "--warn",
+  error: "--error",
+  headerBg: "--header-bg",
+  headerFg: "--header-fg",
+  barFill: "--bar-fill",
+};
+
+function setTheme(id) {
+  const t = THEME_DATA[id];
+  if (!t) return;
+  const root = document.documentElement;
+  for (const [key, val] of Object.entries(t.colors)) {
+    const cssVar = THEME_CSS_MAP[key];
+    if (cssVar) root.style.setProperty(cssVar, val);
+  }
+  // --text-bright follows --text
+  root.style.setProperty("--text-bright", t.colors.fg);
+  // --selected follows --hover
+  root.style.setProperty("--selected", t.colors.bgHighlight);
+  // Update service colors
+  SERVICE_COLORS.length = 0;
+  for (const c of t.servicePalette) SERVICE_COLORS.push(c);
+  // Recompute global service color map
+  const newMap = assignServiceColors(allServices);
+  for (const k of Object.keys(globalServiceColors)) delete globalServiceColors[k];
+  Object.assign(globalServiceColors, newMap);
+  render();
+}
+
 // === Helpers ===
-const SERVICE_COLORS = ${JSON.stringify(theme.servicePalette)};
+let SERVICE_COLORS = ${JSON.stringify(theme.servicePalette)};
 
 function assignServiceColors(services) {
   const sorted = [...services].sort();
@@ -1236,6 +1324,18 @@ function fieldHtml(label, html) {
 }
 
 // === Init ===
+(function() {
+  const saved = localStorage.getItem("tawny-theme");
+  const initial = (saved && THEME_DATA[saved]) ? saved : DEFAULT_THEME_ID;
+  const sel = document.getElementById("theme-select");
+  if (sel) sel.value = initial;
+  if (initial !== DEFAULT_THEME_ID) setTheme(initial);
+  sel && sel.addEventListener("change", function() {
+    const id = sel.value;
+    setTheme(id);
+    localStorage.setItem("tawny-theme", id);
+  });
+})();
 render();
 </script>
 </body>
