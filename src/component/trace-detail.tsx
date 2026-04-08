@@ -11,6 +11,7 @@ import {
   formatTimeRuler,
 } from "../util/format"
 import { useTheme } from "../context/theme"
+import { computeCriticalPath } from "../util/critical-path"
 import type { ParsedSpan } from "../types"
 
 interface FlatSpan {
@@ -79,6 +80,7 @@ export function TraceDetail() {
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const [collapsed, setCollapsed] = createSignal(new Set<string>())
+  const [showCriticalPath, setShowCriticalPath] = createSignal(false)
   // Terminal height minus chrome: app title(1) + trace title(1) + column headers(1) + footer(1) + statusbar(1) + search(1) = 6
   const visibleHeight = () => Math.max(5, (process.stdout.rows ?? 30) - 6)
 
@@ -148,6 +150,13 @@ export function TraceDetail() {
       list = list.filter(f => f.isMatch || f.isContext)
     }
     return list
+  })
+
+  const criticalPath = createMemo(() => {
+    if (!showCriticalPath()) return new Set<string>()
+    const t = trace()
+    if (!t) return new Set<string>()
+    return computeCriticalPath(t.spans)
   })
 
   const matchIndices = createMemo(() => {
@@ -295,6 +304,9 @@ export function TraceDetail() {
         route.navigate({ type: "trace-flamegraph", traceId: route.data.traceId })
       }
     }
+    if (!key.shift && !key.ctrl && key.name === "c") {
+      setShowCriticalPath(prev => !prev)
+    }
     if (!key.ctrl && !key.shift && key.name === "n") {
       const matches = matchIndices()
       if (matches.length > 0) {
@@ -430,10 +442,20 @@ export function TraceDetail() {
             const collapsedSuffix = item.isCollapsed && item.hiddenCount > 0
               ? ` (+${item.hiddenCount})`
               : ""
-            const nameAvail = nameWidth - prefix.length
-            const nameStr = item.isCollapsed && item.hiddenCount > 0
-              ? truncate(item.span.name, nameAvail - collapsedSuffix.length) + collapsedSuffix
+            const isOnCriticalPath = showCriticalPath() && criticalPath().has(item.span.spanId)
+            const criticalPrefix = isOnCriticalPath ? "\u00BB " : ""
+            const nameAvail = Math.max(1, nameWidth - prefix.length - criticalPrefix.length)
+            const baseName = item.isCollapsed && item.hiddenCount > 0
+              ? truncate(item.span.name, Math.max(1, nameAvail - collapsedSuffix.length)) + collapsedSuffix
               : truncate(item.span.name, nameAvail)
+            const displayName = criticalPrefix + baseName
+            const nameColor = isOnCriticalPath
+              ? themeCtx.colors.warning
+              : item.isMatch
+                ? themeCtx.colors.warning
+                : item.isContext
+                  ? themeCtx.colors.fgDim
+                  : themeCtx.colors.fg
 
             return (
               <box
@@ -451,8 +473,8 @@ export function TraceDetail() {
                     </box>
                   )}
                   <box flexGrow={1}>
-                    <text fg={item.isMatch ? themeCtx.colors.warning : item.isContext ? themeCtx.colors.fgDim : themeCtx.colors.fg}>
-                      {nameStr}
+                    <text fg={nameColor}>
+                      {displayName}
                     </text>
                   </box>
                 </box>
@@ -503,6 +525,7 @@ export function TraceDetail() {
       <box width="100%" height={1} backgroundColor={themeCtx.colors.border} paddingLeft={1} flexDirection="row">
         <text fg={themeCtx.colors.fgDim}>
           {flatSpans().length} spans
+          {showCriticalPath() ? " (critical path)" : ""}
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
           {matchIndices().length > 0 ? ` (${matchIndices().length} matches)` : ""}
           {flatSpans().length > 0 ? ` | ${cursor() + 1}/${flatSpans().length}` : ""}
