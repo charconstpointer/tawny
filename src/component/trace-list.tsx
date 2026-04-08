@@ -54,6 +54,8 @@ export function TraceList() {
 
   useKeyboard((key) => {
     if (route.data.type !== "trace-list") return
+    if (t.showThemePicker) return
+    if (key.name === "t") { filter.closeServiceFilter(); t.openThemePicker(); return }
     if (filter.showServiceFilter) return
 
     if (filter.showSearch) {

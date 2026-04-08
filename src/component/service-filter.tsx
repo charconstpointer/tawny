@@ -17,6 +17,7 @@ export function ServiceFilter() {
   const clampCursor = (c: number) => Math.max(0, Math.min(c, services().length))
 
   useKeyboard((key) => {
+    if (t.showThemePicker) return
     if (!filter.showServiceFilter) return
     if (route.data.type !== "trace-list") return
 

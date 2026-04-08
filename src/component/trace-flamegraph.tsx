@@ -2,6 +2,7 @@ import { createMemo, createSignal, For } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useRoute } from "../context/route"
 import { useTraces } from "../context/traces"
+import { useFilter } from "../context/filter"
 import {
   formatDuration,
   formatTimeRuler,
@@ -212,6 +213,7 @@ function buildRowSegments(
 export function TraceFlamegraph() {
   const route = useRoute()
   const traces = useTraces()
+  const filter = useFilter()
   const themeCtx = useTheme()
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
@@ -325,6 +327,8 @@ export function TraceFlamegraph() {
 
   useKeyboard((key) => {
     if (route.data.type !== "trace-flamegraph") return
+    if (themeCtx.showThemePicker) return
+    if (key.name === "t") { filter.closeServiceFilter(); themeCtx.openThemePicker(); return }
 
     if (key.name === "j" || key.name === "down") {
       syncCursor(cursor() + 1)

@@ -9,6 +9,7 @@ import { TraceDetail } from "./component/trace-detail"
 import { SpanDetail } from "./component/span-detail"
 import { TraceFlamegraph } from "./component/trace-flamegraph"
 import { ServiceFilter } from "./component/service-filter"
+import { ThemePicker } from "./component/theme-picker"
 import { StatusBar } from "./component/status-bar"
 import type { TraceSummary } from "./types"
 
@@ -62,7 +63,7 @@ function AppContent() {
         <ServiceFilter />
       </Show>
       <Show when={theme.showThemePicker}>
-        <box />
+        <ThemePicker />
       </Show>
     </box>
   )

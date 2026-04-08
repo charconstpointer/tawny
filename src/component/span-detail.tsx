@@ -2,6 +2,7 @@ import { createSignal, createMemo, For } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useRoute } from "../context/route"
 import { useTraces } from "../context/traces"
+import { useFilter } from "../context/filter"
 import { useTheme } from "../context/theme"
 import { formatDuration, formatTimestamp, shortId } from "../util/format"
 
@@ -14,6 +15,7 @@ interface DetailRow {
 export function SpanDetail() {
   const route = useRoute()
   const traces = useTraces()
+  const filter = useFilter()
   const t = useTheme()
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const visibleHeight = 30
@@ -77,6 +79,8 @@ export function SpanDetail() {
 
   useKeyboard((key) => {
     if (route.data.type !== "span-detail") return
+    if (t.showThemePicker) return
+    if (key.name === "t") { filter.closeServiceFilter(); t.openThemePicker(); return }
 
     // j/k — scroll down/up
     if (key.name === "j" || key.name === "down") {

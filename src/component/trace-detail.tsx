@@ -113,6 +113,8 @@ export function TraceDetail() {
 
   useKeyboard((key) => {
     if (route.data.type !== "trace-detail") return
+    if (themeCtx.showThemePicker) return
+    if (key.name === "t") { filter.closeServiceFilter(); themeCtx.openThemePicker(); return }
     if (filter.showSearch) {
       if (key.name === "escape") {
         filter.closeSearch()
