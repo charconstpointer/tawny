@@ -34,6 +34,12 @@ export function TraceList() {
     if (min > 0) {
       list = list.filter((t) => t.spanCount >= min)
     }
+    if (filter.errorOnly) {
+      list = list.filter((t) => t.errorCount > 0)
+    }
+    if (filter.minDurationMs > 0) {
+      list = list.filter((t) => t.durationMs >= filter.minDurationMs)
+    }
     const services = filter.selectedServices
     if (services.size > 0) {
       list = list.filter((t) => t.services.some((s) => services.has(s)))
@@ -172,6 +178,16 @@ export function TraceList() {
       setCursor(0)
       setScrollOffset(0)
     }
+    if (key.name === "e") {
+      filter.toggleErrorOnly()
+      setCursor(0)
+      setScrollOffset(0)
+    }
+    if (key.name === "d") {
+      filter.cycleMinDuration()
+      setCursor(0)
+      setScrollOffset(0)
+    }
     if (key.name === "s") {
       filter.cycleSortKey()
       setCursor(0)
@@ -279,6 +295,8 @@ export function TraceList() {
           {sorted().length} traces
           {` (sort: ${filter.sortKey})`}
           {filter.minSpans > 0 ? ` (min ${filter.minSpans} spans)` : ""}
+          {filter.errorOnly ? " (errors only)" : ""}
+          {filter.minDurationMs > 0 ? ` (min ${filter.minDurationMs}ms)` : ""}
           {filter.selectedServices.size > 0 ? ` (filtered by ${filter.selectedServices.size} services)` : ""}
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
           {sorted().length > 0 ? ` | ${cursor() + 1}/${sorted().length}` : ""}

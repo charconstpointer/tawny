@@ -62,6 +62,10 @@
 - When list order changes, selection should reset and all row navigation should read from the sorted array, not the filtered one
 - Footer status text can show the active sort key inline without adding extra column or header indicators
 
+## [2026-04-09] Trace list error/duration filters
+- Keep the new error-only and minimum-duration filters in the same memo as the existing span/service/search filters, but before sort.
+- When toggling a list filter from the keyboard, reset cursor and scroll offset to avoid landing on an invalid row.
+
 ## [2026-04-09] T5 — Web runtime theme switching
 
 ### CSS variable mapping (web.ts)
