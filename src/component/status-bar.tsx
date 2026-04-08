@@ -10,7 +10,9 @@ export function StatusBar() {
     const r = route.data
 
     if (r.type === "trace-list") {
-      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Enter/l", "open"], ["/", "search"], ["f", "filter"], ["n", "min spans"], ["t", "theme"], ["q", "quit"])
+      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Enter/l", "open"], ["/", "search"], ["f", "filter"], ["i", "insights"], ["n", "min spans"], ["t", "theme"], ["q", "quit"])
+    } else if (r.type === "insights") {
+      base.push(["j/k", "navigate"], ["h/l", "section"], ["Enter", "open trace"], ["Esc", "back"], ["t", "theme"], ["q", "quit"])
     } else if (r.type === "trace-detail") {
       base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["f", "flamegraph"], ["t", "theme"], ["q", "quit"])
     } else if (r.type === "span-detail") {

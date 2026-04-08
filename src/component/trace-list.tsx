@@ -151,6 +151,9 @@ export function TraceList() {
     if (key.name === "slash" || (key.name === "/" as string)) {
       filter.openSearch()
     }
+    if (!key.ctrl && !key.shift && key.name === "i") {
+      route.navigate({ type: "insights" })
+    }
     if (!key.ctrl && key.name === "f") {
       filter.toggleServiceFilter()
     }

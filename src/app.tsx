@@ -5,6 +5,7 @@ import { TracesProvider, useTraces } from "./context/traces"
 import { FilterProvider, useFilter } from "./context/filter"
 import { ThemeProvider, useTheme } from "./context/theme"
 import { TraceList } from "./component/trace-list"
+import { Insights } from "./component/insights"
 import { TraceDetail } from "./component/trace-detail"
 import { SpanDetail } from "./component/span-detail"
 import { TraceFlamegraph } from "./component/trace-flamegraph"
@@ -42,6 +43,9 @@ function AppContent() {
         <Switch>
           <Match when={route.data.type === "trace-list"}>
             <TraceList />
+          </Match>
+          <Match when={route.data.type === "insights"}>
+            <Insights />
           </Match>
           <Match when={route.data.type === "trace-detail"}>
             <TraceDetail />
