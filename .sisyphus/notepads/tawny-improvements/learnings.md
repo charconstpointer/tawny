@@ -57,6 +57,11 @@
 - Cycling selectors are easiest to keep consistent when the threshold arrays stay module-local and the next value is derived with `indexOf` + modulo
 - New context fields should be exported directly from the `return { ... }` object so downstream components can consume them without extra plumbing
 
+## [2026-04-09] Trace list dynamic sorting
+- The trace list should sort from a memoized filtered list, then apply a second memo for the active sort key so keyboard-driven sort cycling stays reactive
+- When list order changes, selection should reset and all row navigation should read from the sorted array, not the filtered one
+- Footer status text can show the active sort key inline without adding extra column or header indicators
+
 ## [2026-04-09] T5 — Web runtime theme switching
 
 ### CSS variable mapping (web.ts)

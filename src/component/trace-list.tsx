@@ -47,10 +47,20 @@ export function TraceList() {
           t.spans.some((s) => s.name.toLowerCase().includes(q))
       )
     }
-    return list.slice().sort((a, b) => b.spanCount - a.spanCount)
+    return list
   })
 
-  const clampCursor = (c: number) => Math.max(0, Math.min(c, filtered().length - 1))
+  const sorted = createMemo(() => {
+    const list = [...filtered()]
+    const key = filter.sortKey
+    if (key === "time") list.sort((a, b) => Number(b.startTimeNano - a.startTimeNano))
+    else if (key === "duration") list.sort((a, b) => b.durationMs - a.durationMs)
+    else if (key === "spans") list.sort((a, b) => b.spanCount - a.spanCount)
+    else if (key === "errors") list.sort((a, b) => b.errorCount - a.errorCount || b.durationMs - a.durationMs)
+    return list
+  })
+
+  const clampCursor = (c: number) => Math.max(0, Math.min(c, sorted().length - 1))
 
   useKeyboard((key) => {
     if (route.data.type !== "trace-list") return
@@ -92,7 +102,7 @@ export function TraceList() {
     }
     // g / G — go to top / bottom
     if (key.shift && key.name === "g") {
-      const last = Math.max(0, filtered().length - 1)
+      const last = Math.max(0, sorted().length - 1)
       setCursor(last)
       setScrollOffset(Math.max(0, last - visibleHeight() + 2))
     } else if (key.name === "g") {
@@ -102,7 +112,7 @@ export function TraceList() {
     // Ctrl+d / Ctrl+u — half page down / up
     if (key.ctrl && key.name === "d") {
       const half = Math.floor(visibleHeight() / 2)
-      const maxScroll = Math.max(0, filtered().length - visibleHeight())
+      const maxScroll = Math.max(0, sorted().length - visibleHeight())
       setCursor(clampCursor(cursor() + half))
       setScrollOffset(Math.min(scrollOffset() + half, maxScroll))
     }
@@ -114,7 +124,7 @@ export function TraceList() {
     // Ctrl+f / Ctrl+b — full page down / up
     if (key.ctrl && key.name === "f") {
       const page = visibleHeight() - 2
-      const maxScroll = Math.max(0, filtered().length - visibleHeight())
+      const maxScroll = Math.max(0, sorted().length - visibleHeight())
       const nextScroll = Math.min(scrollOffset() + page, maxScroll)
       setScrollOffset(nextScroll)
       setCursor(clampCursor(nextScroll))
@@ -133,17 +143,17 @@ export function TraceList() {
       setCursor(clampCursor(scrollOffset() + Math.floor(visibleHeight() / 2)))
     }
     if (key.shift && key.name === "l") {
-      setCursor(clampCursor(Math.min(scrollOffset() + visibleHeight() - 2, filtered().length - 1)))
+      setCursor(clampCursor(Math.min(scrollOffset() + visibleHeight() - 2, sorted().length - 1)))
     }
     // l / Enter — open trace
     if (!key.shift && !key.ctrl && key.name === "l") {
-      const item = filtered()[cursor()]
+      const item = sorted()[cursor()]
       if (item) {
         route.navigate({ type: "trace-detail", traceId: item.traceId })
       }
     }
     if (key.name === "return") {
-      const item = filtered()[cursor()]
+      const item = sorted()[cursor()]
       if (item) {
         route.navigate({ type: "trace-detail", traceId: item.traceId })
       }
@@ -162,13 +172,18 @@ export function TraceList() {
       setCursor(0)
       setScrollOffset(0)
     }
+    if (key.name === "s") {
+      filter.cycleSortKey()
+      setCursor(0)
+      setScrollOffset(0)
+    }
     if (key.name === "q") {
       process.exit(0)
     }
   })
 
   const visibleTraces = createMemo(() => {
-    const f = filtered()
+    const f = sorted()
     const start = scrollOffset()
     const end = start + visibleHeight()
     return f.slice(start, end)
@@ -261,11 +276,12 @@ export function TraceList() {
       {/* Footer info */}
       <box width="100%" height={1} flexDirection="row" backgroundColor={t.colors.border} paddingLeft={1}>
         <text fg={t.colors.fgDim}>
-          {filtered().length} traces
+          {sorted().length} traces
+          {` (sort: ${filter.sortKey})`}
           {filter.minSpans > 0 ? ` (min ${filter.minSpans} spans)` : ""}
           {filter.selectedServices.size > 0 ? ` (filtered by ${filter.selectedServices.size} services)` : ""}
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
-          {filtered().length > 0 ? ` | ${cursor() + 1}/${filtered().length}` : ""}
+          {sorted().length > 0 ? ` | ${cursor() + 1}/${sorted().length}` : ""}
         </text>
       </box>
 
