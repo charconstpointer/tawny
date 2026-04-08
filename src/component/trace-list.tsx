@@ -60,13 +60,13 @@ export function TraceList() {
 
     if (filter.showSearch) {
       if (key.name === "escape") {
-        filter.closeSearch()
+        filter.clearSearch()
       } else if (key.name === "backspace") {
         filter.setSearchQuery(filter.searchQuery.slice(0, -1))
         setCursor(0)
         setScrollOffset(0)
       } else if (key.name === "return") {
-        filter.closeSearch()
+        filter.hideSearch()
       } else if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
         filter.setSearchQuery(filter.searchQuery + key.sequence)
         setCursor(0)

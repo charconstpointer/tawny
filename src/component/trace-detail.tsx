@@ -19,10 +19,20 @@ const FILL = 500
 interface FlatSpan {
   span: ParsedSpan
   depth: number
+  parentSpanId: string | undefined
   hasChildren: boolean
   isCollapsed: boolean
   /** Number of hidden descendants when collapsed */
   hiddenCount: number
+  isMatch: boolean
+  isContext: boolean
+}
+
+function spanMatches(span: ParsedSpan, query: string): boolean {
+  const q = query.toLowerCase()
+  return span.name.toLowerCase().includes(q)
+    || span.serviceName.toLowerCase().includes(q)
+    || span.spanId.toLowerCase().includes(q)
 }
 
 function countDescendants(span: ParsedSpan): number {
@@ -33,20 +43,34 @@ function countDescendants(span: ParsedSpan): number {
   return count
 }
 
-function flattenTree(roots: ParsedSpan[], collapsed: Set<string>): FlatSpan[] {
+function flattenTree(
+  roots: ParsedSpan[],
+  collapsed: Set<string>,
+  matchedIds = new Set<string>(),
+  contextIds = new Set<string>(),
+): FlatSpan[] {
   const result: FlatSpan[] = []
-  function walk(spans: ParsedSpan[], depth: number) {
+  function walk(spans: ParsedSpan[], depth: number, parentSpanId: string | undefined) {
     for (const s of spans) {
       const hasChildren = s.children.length > 0
       const isCollapsed = collapsed.has(s.spanId)
       const hiddenCount = hasChildren && isCollapsed ? countDescendants(s) : 0
-      result.push({ span: s, depth, hasChildren, isCollapsed, hiddenCount })
+      result.push({
+        span: s,
+        depth,
+        parentSpanId,
+        hasChildren,
+        isCollapsed,
+        hiddenCount,
+        isMatch: matchedIds.has(s.spanId),
+        isContext: contextIds.has(s.spanId),
+      })
       if (hasChildren && !isCollapsed) {
-        walk(s.children, depth + 1)
+        walk(s.children, depth + 1, s.spanId)
       }
     }
   }
-  walk(roots, 0)
+  walk(roots, 0, undefined)
   return result
 }
 
@@ -78,20 +102,63 @@ export function TraceDetail() {
     return traces.byId(route.data.traceId)
   })
 
+  const query = createMemo(() => filter.searchQuery.trim().toLowerCase())
+
+  const searchState = createMemo(() => {
+    const t = trace()
+    const q = query()
+    if (!t || !q) {
+      return {
+        effectiveCollapsed: collapsed(),
+        matchedIds: new Set<string>(),
+        contextIds: new Set<string>(),
+      }
+    }
+
+    const parentMap = new Map<string, string | undefined>()
+    const matchedIds = new Set<string>()
+
+    for (const span of t.spans) {
+      parentMap.set(span.spanId, span.parentSpanId)
+      if (spanMatches(span, q)) {
+        matchedIds.add(span.spanId)
+      }
+    }
+
+    const contextIds = new Set<string>()
+    for (const spanId of matchedIds) {
+      let current = parentMap.get(spanId)
+      while (current) {
+        contextIds.add(current)
+        current = parentMap.get(current)
+      }
+    }
+
+    const effectiveCollapsed = new Set(collapsed())
+    for (const spanId of contextIds) {
+      effectiveCollapsed.delete(spanId)
+    }
+
+    return { effectiveCollapsed, matchedIds, contextIds }
+  })
+
   const flatSpans = createMemo(() => {
     const t = trace()
     if (!t) return []
-    let list = flattenTree(t.tree, collapsed())
-    const q = filter.searchQuery.toLowerCase()
-    if (q) {
-      list = list.filter(
-        (f) =>
-          f.span.name.toLowerCase().includes(q) ||
-          f.span.serviceName.toLowerCase().includes(q) ||
-          f.span.spanId.toLowerCase().includes(q)
-      )
+    const search = searchState()
+    let list = flattenTree(t.tree, search.effectiveCollapsed, search.matchedIds, search.contextIds)
+    if (search.matchedIds.size > 0) {
+      list = list.filter(f => f.isMatch || f.isContext)
     }
     return list
+  })
+
+  const matchIndices = createMemo(() => {
+    const indices: number[] = []
+    for (const [index, item] of flatSpans().entries()) {
+      if (item.isMatch) indices.push(index)
+    }
+    return indices
   })
 
   const clampCursor = (c: number) => Math.max(0, Math.min(c, flatSpans().length - 1))
@@ -117,13 +184,13 @@ export function TraceDetail() {
     if (key.name === "t") { filter.closeServiceFilter(); themeCtx.openThemePicker(); return }
     if (filter.showSearch) {
       if (key.name === "escape") {
-        filter.closeSearch()
+        filter.clearSearch()
       } else if (key.name === "backspace") {
         filter.setSearchQuery(filter.searchQuery.slice(0, -1))
         setCursor(0)
         setScrollOffset(0)
       } else if (key.name === "return") {
-        filter.closeSearch()
+        filter.hideSearch()
       } else if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
         filter.setSearchQuery(filter.searchQuery + key.sequence)
         setCursor(0)
@@ -215,7 +282,7 @@ export function TraceDetail() {
     }
     if (key.name === "space" || key.name === "tab") {
       const item = flatSpans()[cursor()]
-      if (item && item.hasChildren) {
+      if (item && item.hasChildren && !query()) {
         toggleCollapse(item.span.spanId)
       }
     }
@@ -229,6 +296,32 @@ export function TraceDetail() {
     if (!key.shift && !key.ctrl && key.name === "f") {
       if (route.data.type === "trace-detail") {
         route.navigate({ type: "trace-flamegraph", traceId: route.data.traceId })
+      }
+    }
+    if (!key.ctrl && !key.shift && key.name === "n") {
+      const matches = matchIndices()
+      if (matches.length > 0) {
+        const current = cursor()
+        const next = matches.find(index => index > current) ?? matches[0]!
+        setCursor(next)
+        if (next < scrollOffset()) {
+          setScrollOffset(next)
+        } else if (next >= scrollOffset() + visibleHeight() - 1) {
+          setScrollOffset(Math.max(0, next - visibleHeight() + 2))
+        }
+      }
+    }
+    if (key.shift && key.name === "n") {
+      const matches = matchIndices()
+      if (matches.length > 0) {
+        const current = cursor()
+        const prev = [...matches].reverse().find(index => index < current) ?? matches[matches.length - 1]!
+        setCursor(prev)
+        if (prev < scrollOffset()) {
+          setScrollOffset(prev)
+        } else if (prev >= scrollOffset() + visibleHeight() - 1) {
+          setScrollOffset(Math.max(0, prev - visibleHeight() + 2))
+        }
       }
     }
     if (key.name === "q") {
@@ -361,7 +454,7 @@ export function TraceDetail() {
                     </box>
                   )}
                   <box flexGrow={1}>
-                    <text fg={themeCtx.colors.fg}>
+                    <text fg={item.isMatch ? themeCtx.colors.warning : item.isContext ? themeCtx.colors.fgDim : themeCtx.colors.fg}>
                       {nameStr}
                     </text>
                   </box>
@@ -414,6 +507,7 @@ export function TraceDetail() {
         <text fg={themeCtx.colors.fgDim}>
           {flatSpans().length} spans
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
+          {matchIndices().length > 0 ? ` (${matchIndices().length} matches)` : ""}
           {flatSpans().length > 0 ? ` | ${cursor() + 1}/${flatSpans().length}` : ""}
         </text>
       </box>

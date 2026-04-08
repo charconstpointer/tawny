@@ -55,7 +55,10 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
       openSearch() {
         setShowSearch(true)
       },
-      closeSearch() {
+      hideSearch() {
+        setShowSearch(false)
+      },
+      clearSearch() {
         setShowSearch(false)
         setSearchQuery("")
       },
