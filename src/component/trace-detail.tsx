@@ -13,9 +13,6 @@ import {
 import { useTheme } from "../context/theme"
 import type { ParsedSpan } from "../types"
 
-/** Max chars we'd ever repeat for fill text — well beyond any terminal width */
-const FILL = 500
-
 interface FlatSpan {
   span: ParsedSpan
   depth: number
@@ -484,16 +481,16 @@ export function TraceDetail() {
                   {/* Space before the bar */}
                   {startCol > 0 && (
                     <box width={startCol}>
-                      <text fg={themeCtx.colors.barFill}>{"\u2500".repeat(FILL)}</text>
+                      <text fg={themeCtx.colors.barFill}>{"\u2500".repeat(startCol)}</text>
                     </box>
                   )}
                   {/* The bar itself */}
                   <box width={barLen}>
-                    <text fg={color}>{"\u2588".repeat(FILL)}</text>
+                    <text fg={color}>{"\u2588".repeat(barLen)}</text>
                   </box>
                   {/* Remaining space after the bar */}
-                  <box flexGrow={1}>
-                    <text fg={themeCtx.colors.barFill}>{"\u2500".repeat(FILL)}</text>
+                  <box width={Math.max(0, ww - startCol - barLen)}>
+                    <text fg={themeCtx.colors.barFill}>{"\u2500".repeat(Math.max(0, ww - startCol - barLen))}</text>
                   </box>
                 </box>
               </box>
