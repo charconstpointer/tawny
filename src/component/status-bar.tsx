@@ -1,26 +1,22 @@
 import { useRoute } from "../context/route"
-
-const theme = {
-  key: "#7aa2f7",
-  desc: "#565f89",
-  sep: "#3b4261",
-}
+import { useTheme } from "../context/theme"
 
 export function StatusBar() {
   const route = useRoute()
+  const t = useTheme()
 
   const hints = () => {
     const base: [string, string][] = []
     const r = route.data
 
     if (r.type === "trace-list") {
-      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Enter/l", "open"], ["/", "search"], ["f", "filter"], ["n", "min spans"], ["q", "quit"])
+      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Enter/l", "open"], ["/", "search"], ["f", "filter"], ["n", "min spans"], ["t", "theme"], ["q", "quit"])
     } else if (r.type === "trace-detail") {
-      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["f", "flamegraph"], ["q", "quit"])
+      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["f", "flamegraph"], ["t", "theme"], ["q", "quit"])
     } else if (r.type === "span-detail") {
-      base.push(["j/k", "scroll"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["h", "back"], ["q", "quit"])
+      base.push(["j/k", "scroll"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["h", "back"], ["t", "theme"], ["q", "quit"])
     } else if (r.type === "trace-flamegraph") {
-      base.push(["m", "mode"], ["Enter", "zoom"], ["Esc", "back"], ["j/k", "nav"], ["h/l", "left/right"], ["g/G", "top/bottom"])
+      base.push(["m", "mode"], ["Enter", "zoom"], ["Esc", "back"], ["j/k", "nav"], ["h/l", "left/right"], ["t", "theme"], ["g/G", "top/bottom"])
     }
 
     return base
@@ -31,17 +27,17 @@ export function StatusBar() {
       width="100%"
       height={1}
       flexDirection="row"
-      backgroundColor="#1a1b26"
+      backgroundColor={t.colors.bg}
     >
       {hints().map(([key, desc], i) => (
         <box flexDirection="row">
           {i > 0 && (
-            <text fg={theme.sep}> | </text>
+            <text fg={t.colors.border}> | </text>
           )}
-          <text fg={theme.key}>
+          <text fg={t.colors.accent}>
             {` ${key} `}
           </text>
-          <text fg={theme.desc}>{desc}</text>
+          <text fg={t.colors.fgDim}>{desc}</text>
         </box>
       ))}
     </box>

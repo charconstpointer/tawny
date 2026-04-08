@@ -67,11 +67,12 @@ const SERVICE_COLORS = [
  * Assigns a distinct color to each service name from a fixed palette.
  * Returns a Map<serviceName, hexColor>.
  */
-export function serviceColorMap(services: string[]): Map<string, string> {
+export function serviceColorMap(services: string[], palette?: string[]): Map<string, string> {
+  const colors = palette ?? SERVICE_COLORS
   const sorted = [...services].sort()
   const map = new Map<string, string>()
   for (let i = 0; i < sorted.length; i++) {
-    map.set(sorted[i], SERVICE_COLORS[i % SERVICE_COLORS.length])
+    map.set(sorted[i], colors[i % colors.length])
   }
   return map
 }

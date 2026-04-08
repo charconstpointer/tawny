@@ -2,23 +2,8 @@ import { createSignal, createMemo, For } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useRoute } from "../context/route"
 import { useTraces } from "../context/traces"
+import { useTheme } from "../context/theme"
 import { formatDuration, formatTimestamp, shortId } from "../util/format"
-
-const theme = {
-  header: "#3b4261",
-  headerFg: "#c0caf5",
-  label: "#7aa2f7",
-  value: "#c0caf5",
-  dim: "#565f89",
-  error: "#f7768e",
-  ok: "#9ece6a",
-  unset: "#565f89",
-  attrKey: "#bb9af7",
-  attrVal: "#9ece6a",
-  sectionBg: "#24283b",
-  normal: "#1a1b26",
-  selected: "#292e42",
-}
 
 interface DetailRow {
   type: "section" | "field" | "attr"
@@ -29,6 +14,7 @@ interface DetailRow {
 export function SpanDetail() {
   const route = useRoute()
   const traces = useTraces()
+  const t = useTheme()
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const visibleHeight = 30
 
@@ -138,10 +124,10 @@ export function SpanDetail() {
 
   const statusColor = () => {
     const s = span()
-    if (!s) return theme.dim
-    if (s.status === "ERROR") return theme.error
-    if (s.status === "OK") return theme.ok
-    return theme.unset
+    if (!s) return t.colors.fgDim
+    if (s.status === "ERROR") return t.colors.error
+    if (s.status === "OK") return t.colors.success
+    return t.colors.fgDim
   }
 
   return (
@@ -150,7 +136,7 @@ export function SpanDetail() {
       <box
         width="100%"
         height={1}
-        backgroundColor={theme.header}
+        backgroundColor={t.colors.border}
         flexDirection="row"
         paddingLeft={1}
         paddingRight={1}
@@ -158,7 +144,7 @@ export function SpanDetail() {
         <text fg={statusColor()}>
           {span()?.status === "ERROR" ? "\u25CF " : span()?.status === "OK" ? "\u25CF " : "\u25CB "}
         </text>
-        <text fg={theme.headerFg}>
+        <text fg={t.colors.headerFg}>
           {span()?.name ?? "Span Detail"} ({shortId(span()?.spanId ?? "", 8)})
         </text>
       </box>
@@ -169,14 +155,14 @@ export function SpanDetail() {
           {(row) => {
             if (row.type === "section") {
               return (
-                <box width="100%" height={1} backgroundColor={theme.sectionBg} paddingLeft={1}>
-                  <text fg={theme.headerFg}>{`\u2500\u2500 ${row.label} \u2500\u2500`}</text>
+                <box width="100%" height={1} backgroundColor={t.colors.bgAlt} paddingLeft={1}>
+                  <text fg={t.colors.headerFg}>{`\u2500\u2500 ${row.label} \u2500\u2500`}</text>
                 </box>
               )
             }
 
-            const labelColor = row.type === "attr" ? theme.attrKey : theme.label
-            const valueColor = row.type === "attr" ? theme.attrVal : theme.value
+            const labelColor = row.type === "attr" ? t.colors.accent2 : t.colors.accent
+            const valueColor = row.type === "attr" ? t.colors.success : t.colors.fg
 
             return (
               <box width="100%" height={1} flexDirection="row" paddingLeft={2}>
@@ -191,8 +177,8 @@ export function SpanDetail() {
       </box>
 
       {/* Footer */}
-      <box width="100%" height={1} backgroundColor={theme.header} paddingLeft={1}>
-        <text fg={theme.dim}>
+      <box width="100%" height={1} backgroundColor={t.colors.border} paddingLeft={1}>
+        <text fg={t.colors.fgDim}>
           {rows().length > visibleHeight
             ? `Scroll: ${scrollOffset() + 1}-${Math.min(scrollOffset() + visibleHeight, rows().length)}/${rows().length}`
             : `${rows().length} fields`}

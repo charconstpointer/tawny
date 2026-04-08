@@ -10,21 +10,8 @@ import {
   shortId,
   truncate,
 } from "../util/format"
+import { useTheme } from "../context/theme"
 import type { ParsedSpan } from "../types"
-
-const theme = {
-  normal: "#1a1b26",
-  selected: "#292e42",
-  header: "#3b4261",
-  headerFg: "#c0caf5",
-  dim: "#565f89",
-  rulerBg: "#24283b",
-  rulerFg: "#565f89",
-  fill: "#24283b",
-  error: "#f7768e",
-  duration: "#7aa2f7",
-  zoom: "#e0af68",
-}
 
 interface LayoutBlock {
   span: ParsedSpan
@@ -167,11 +154,17 @@ function buildAggregatedLayout(
   return rows
 }
 
-function buildRowSegments(row: LayoutRow | undefined, width: number, selectedIndex: number): RowSegment[] {
+function buildRowSegments(
+  row: LayoutRow | undefined,
+  width: number,
+  selectedIndex: number,
+  fill: string,
+  durationColor: string,
+): RowSegment[] {
   const safeWidth = Math.max(1, width)
 
   if (!row || row.blocks.length === 0) {
-    return [{ type: "fill", width: safeWidth, color: theme.fill, selected: false }]
+    return [{ type: "fill", width: safeWidth, color: fill, selected: false }]
   }
 
   const columns: (LayoutBlock | null)[] = new Array(safeWidth).fill(null)
@@ -197,7 +190,7 @@ function buildRowSegments(row: LayoutRow | undefined, width: number, selectedInd
       segments.push({
         type: "block",
         width: j - i,
-        color: theme.duration,
+        color: durationColor,
         selected: block.indexInRow === selectedIndex,
         span: block.span,
       })
@@ -205,7 +198,7 @@ function buildRowSegments(row: LayoutRow | undefined, width: number, selectedInd
       segments.push({
         type: "fill",
         width: j - i,
-        color: theme.fill,
+        color: fill,
         selected: false,
       })
     }
@@ -219,6 +212,7 @@ function buildRowSegments(row: LayoutRow | undefined, width: number, selectedInd
 export function TraceFlamegraph() {
   const route = useRoute()
   const traces = useTraces()
+  const themeCtx = useTheme()
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const [mode, setMode] = createSignal<"icicle" | "aggregated">("icicle")
@@ -235,7 +229,7 @@ export function TraceFlamegraph() {
   const svcColors = createMemo(() => {
     const t = trace()
     if (!t) return new Map<string, string>()
-    return serviceColorMap(t.services)
+    return serviceColorMap(t.services, themeCtx.servicePalette)
   })
 
   const graphWidth = createMemo(() => Math.max(1, (process.stdout.columns ?? 120) - 2))
@@ -296,8 +290,8 @@ export function TraceFlamegraph() {
   const selectedBlock = createMemo(() => flatBlocks()[clampCursor(cursor())])
 
   const barColor = (span: ParsedSpan) => {
-    if (span.status === "ERROR") return theme.error
-    return svcColors().get(span.serviceName) ?? theme.duration
+    if (span.status === "ERROR") return themeCtx.colors.error
+    return svcColors().get(span.serviceName) ?? themeCtx.colors.accent
   }
 
   const syncCursor = (next: number) => {
@@ -417,12 +411,12 @@ export function TraceFlamegraph() {
       <box
         width="100%"
         height={1}
-        backgroundColor={theme.header}
+        backgroundColor={themeCtx.colors.border}
         flexDirection="row"
         paddingLeft={1}
         paddingRight={1}
       >
-        <text fg={theme.headerFg}>
+        <text fg={themeCtx.colors.headerFg}>
           Flamegraph {trace() ? shortId(trace()!.traceId, 16) : "?"} - {trace()?.spanCount ?? 0} spans - {formatDuration(trace()?.durationMs ?? 0)}
         </text>
       </box>
@@ -430,18 +424,18 @@ export function TraceFlamegraph() {
       <box
         width="100%"
         height={1}
-        backgroundColor={theme.rulerBg}
+        backgroundColor={themeCtx.colors.bgAlt}
         flexDirection="row"
         paddingLeft={1}
       >
         <box width={13}>
-          <text fg={theme.dim}>{formatTimeShort(rulerStartNano())}</text>
+          <text fg={themeCtx.colors.fgDim}>{formatTimeShort(rulerStartNano())}</text>
         </box>
         <box width={rulerWidth()}>
-          <text fg={theme.rulerFg}>{formatTimeRuler(rulerDurationMs(), rulerWidth())}</text>
+          <text fg={themeCtx.colors.fgDim}>{formatTimeRuler(rulerDurationMs(), rulerWidth())}</text>
         </box>
         <box flexGrow={1}>
-          <text fg={theme.dim}>{formatTimeShort(rulerEndNano())}</text>
+          <text fg={themeCtx.colors.fgDim}>{formatTimeShort(rulerEndNano())}</text>
         </box>
       </box>
 
@@ -449,14 +443,21 @@ export function TraceFlamegraph() {
         <For each={visibleRows()}>
           {(row) => {
             const selected = selectedBlock()
-            const segments = () => buildRowSegments(row, graphWidth(), selected?.rowIndex === row.depth ? selected.indexInRow : -1)
+            const segments = () =>
+              buildRowSegments(
+                row,
+                graphWidth(),
+                selected?.rowIndex === row.depth ? selected.indexInRow : -1,
+                themeCtx.colors.barFill,
+                themeCtx.colors.accent,
+              )
 
             return (
               <box
                 width="100%"
                 height={1}
                 flexDirection="row"
-                backgroundColor={selected?.rowIndex === row.depth ? theme.selected : theme.normal}
+                backgroundColor={selected?.rowIndex === row.depth ? themeCtx.colors.bgHighlight : themeCtx.colors.bg}
                 paddingLeft={1}
               >
                 <For each={segments()}>
@@ -476,8 +477,8 @@ export function TraceFlamegraph() {
         </For>
       </box>
 
-      <box width="100%" height={1} backgroundColor={theme.header} paddingLeft={1}>
-        <text fg={zoomedSpan() ? theme.zoom : (selectedBlock() ? barColor(selectedBlock()!.span) : theme.dim)}>{infoLine()}</text>
+      <box width="100%" height={1} backgroundColor={themeCtx.colors.border} paddingLeft={1}>
+        <text fg={zoomedSpan() ? themeCtx.colors.warning : (selectedBlock() ? barColor(selectedBlock()!.span) : themeCtx.colors.fgDim)}>{infoLine()}</text>
       </box>
     </box>
   )

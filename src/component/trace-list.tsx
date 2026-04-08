@@ -3,30 +3,15 @@ import { useKeyboard } from "@opentui/solid"
 import { useRoute } from "../context/route"
 import { useTraces } from "../context/traces"
 import { useFilter } from "../context/filter"
+import { useTheme } from "../context/theme"
 import { shortId, formatDuration, formatTimeShort, truncate } from "../util/format"
 import type { TraceSummary } from "../types"
-
-const theme = {
-  selected: "#292e42",
-  normal: "#1a1b26",
-  header: "#3b4261",
-  headerFg: "#c0caf5",
-  traceId: "#bb9af7",
-  service: "#7dcfff",
-  duration: "#7aa2f7",
-  spanCount: "#565f89",
-  error: "#f7768e",
-  ok: "#9ece6a",
-  unset: "#565f89",
-  dim: "#565f89",
-  searchBg: "#292e42",
-  searchFg: "#c0caf5",
-}
 
 export function TraceList() {
   const route = useRoute()
   const traces = useTraces()
   const filter = useFilter()
+  const t = useTheme()
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
   // Terminal height minus chrome: title(1) + header(1) + footer(1) + statusbar(1) + search(1) = 5
@@ -184,9 +169,9 @@ export function TraceList() {
     return f.slice(start, end)
   })
 
-  const statusColor = (t: TraceSummary) => {
-    if (t.errorCount > 0) return theme.error
-    return theme.ok
+  const statusColor = (trace: TraceSummary) => {
+    if (trace.errorCount > 0) return t.colors.error
+    return t.colors.success
   }
 
   return (
@@ -196,30 +181,30 @@ export function TraceList() {
         width="100%"
         height={1}
         flexDirection="row"
-        backgroundColor={theme.header}
+        backgroundColor={t.colors.border}
         paddingLeft={1}
         paddingRight={1}
       >
         <box width={10}>
-          <text fg={theme.headerFg}>TRACE ID</text>
+          <text fg={t.colors.headerFg}>TRACE ID</text>
         </box>
         <box width={rootSpanWidth()}>
-          <text fg={theme.headerFg}>ROOT SPAN</text>
+          <text fg={t.colors.headerFg}>ROOT SPAN</text>
         </box>
         <box width={8}>
-          <text fg={theme.headerFg}>SPANS</text>
+          <text fg={t.colors.headerFg}>SPANS</text>
         </box>
         <box width={12}>
-          <text fg={theme.headerFg}>DURATION</text>
+          <text fg={t.colors.headerFg}>DURATION</text>
         </box>
         <box width={14}>
-          <text fg={theme.headerFg}>TIME</text>
+          <text fg={t.colors.headerFg}>TIME</text>
         </box>
         <box width={8}>
-          <text fg={theme.headerFg}>STATUS</text>
+          <text fg={t.colors.headerFg}>STATUS</text>
         </box>
         <box flexGrow={1}>
-          <text fg={theme.headerFg}>SERVICES</text>
+          <text fg={t.colors.headerFg}>SERVICES</text>
         </box>
       </box>
 
@@ -235,24 +220,24 @@ export function TraceList() {
                 width="100%"
                 height={1}
                 flexDirection="row"
-                backgroundColor={isSelected() ? theme.selected : theme.normal}
+                backgroundColor={isSelected() ? t.colors.bgHighlight : t.colors.bg}
                 paddingLeft={1}
                 paddingRight={1}
               >
                 <box width={10}>
-                  <text fg={theme.traceId}>{shortId(trace.traceId)}</text>
+                  <text fg={t.colors.accent2}>{shortId(trace.traceId)}</text>
                 </box>
                 <box width={rootSpanWidth()}>
-                  <text fg={theme.headerFg}>{truncate(trace.rootSpan?.name ?? "(no root)", rootSpanWidth() - 1)}</text>
+                  <text fg={t.colors.headerFg}>{truncate(trace.rootSpan?.name ?? "(no root)", rootSpanWidth() - 1)}</text>
                 </box>
                 <box width={8}>
-                  <text fg={theme.spanCount}>{String(trace.spanCount).padStart(5)}</text>
+                  <text fg={t.colors.fgDim}>{String(trace.spanCount).padStart(5)}</text>
                 </box>
                 <box width={12}>
-                  <text fg={theme.duration}>{formatDuration(trace.durationMs).padStart(9)}</text>
+                  <text fg={t.colors.accent}>{formatDuration(trace.durationMs).padStart(9)}</text>
                 </box>
                 <box width={14}>
-                  <text fg={theme.dim}>{formatTimeShort(trace.startTimeNano)}</text>
+                  <text fg={t.colors.fgDim}>{formatTimeShort(trace.startTimeNano)}</text>
                 </box>
                 <box width={8}>
                   <text fg={statusColor(trace)}>
@@ -260,7 +245,7 @@ export function TraceList() {
                   </text>
                 </box>
                 <box flexGrow={1}>
-                  <text fg={theme.service}>{truncate(trace.services.join(", "), servicesWidth() - 1)}</text>
+                  <text fg={t.colors.accent3}>{truncate(trace.services.join(", "), servicesWidth() - 1)}</text>
                 </box>
               </box>
             )
@@ -269,8 +254,8 @@ export function TraceList() {
       </box>
 
       {/* Footer info */}
-      <box width="100%" height={1} flexDirection="row" backgroundColor={theme.header} paddingLeft={1}>
-        <text fg={theme.dim}>
+      <box width="100%" height={1} flexDirection="row" backgroundColor={t.colors.border} paddingLeft={1}>
+        <text fg={t.colors.fgDim}>
           {filtered().length} traces
           {filter.minSpans > 0 ? ` (min ${filter.minSpans} spans)` : ""}
           {filter.selectedServices.size > 0 ? ` (filtered by ${filter.selectedServices.size} services)` : ""}
@@ -284,13 +269,13 @@ export function TraceList() {
         <box
           width="100%"
           height={1}
-          backgroundColor={theme.searchBg}
+          backgroundColor={t.colors.bgHighlight}
           flexDirection="row"
           paddingLeft={1}
         >
-          <text fg={theme.duration}>/ </text>
-          <text fg={theme.searchFg}>{filter.searchQuery}</text>
-          <text fg={theme.duration}>_</text>
+          <text fg={t.colors.accent}>/ </text>
+          <text fg={t.colors.fg}>{filter.searchQuery}</text>
+          <text fg={t.colors.accent}>_</text>
         </box>
       )}
     </box>

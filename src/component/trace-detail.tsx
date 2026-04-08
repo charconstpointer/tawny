@@ -10,25 +10,8 @@ import {
   serviceColorMap,
   formatTimeRuler,
 } from "../util/format"
+import { useTheme } from "../context/theme"
 import type { ParsedSpan } from "../types"
-
-const theme = {
-  selected: "#292e42",
-  normal: "#1a1b26",
-  header: "#3b4261",
-  headerFg: "#c0caf5",
-  spanName: "#c0caf5",
-  duration: "#7aa2f7",
-  error: "#f7768e",
-  ok: "#9ece6a",
-  unset: "#565f89",
-  dim: "#565f89",
-  tree: "#565f89",
-  rulerFg: "#565f89",
-  barBg: "#24283b",
-  divider: "#3b4261",
-  collapseIndicator: "#7aa2f7",
-}
 
 /** Max chars we'd ever repeat for fill text — well beyond any terminal width */
 const FILL = 500
@@ -71,6 +54,7 @@ export function TraceDetail() {
   const route = useRoute()
   const traces = useTraces()
   const filter = useFilter()
+  const themeCtx = useTheme()
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const [collapsed, setCollapsed] = createSignal(new Set<string>())
@@ -116,7 +100,7 @@ export function TraceDetail() {
   const svcColors = createMemo(() => {
     const t = trace()
     if (!t) return new Map<string, string>()
-    return serviceColorMap(t.services)
+    return serviceColorMap(t.services, themeCtx.servicePalette)
   })
 
   // Ruler width — use process.stdout.columns as a best-effort hint.
@@ -260,8 +244,8 @@ export function TraceDetail() {
   const traceDurationMs = createMemo(() => trace()?.durationMs ?? 1)
 
   const barColor = (span: ParsedSpan) => {
-    if (span.status === "ERROR") return theme.error
-    return svcColors().get(span.serviceName) ?? theme.duration
+    if (span.status === "ERROR") return themeCtx.colors.error
+    return svcColors().get(span.serviceName) ?? themeCtx.colors.accent
   }
 
   const treePrefix = (depth: number, hasChildren: boolean, isCollapsed: boolean) => {
@@ -286,12 +270,12 @@ export function TraceDetail() {
       <box
         width="100%"
         height={1}
-        backgroundColor={theme.header}
+        backgroundColor={themeCtx.colors.border}
         flexDirection="row"
         paddingLeft={1}
         paddingRight={1}
       >
-        <text fg={theme.headerFg}>
+        <text fg={themeCtx.colors.headerFg}>
           Trace {trace() ? shortId(trace()!.traceId, 16) : "?"} - {trace()?.spanCount ?? 0} spans - {formatDuration(trace()?.durationMs ?? 0)}
           {trace()?.errorCount ? ` - ${trace()!.errorCount} errors` : ""}
         </text>
@@ -302,24 +286,24 @@ export function TraceDetail() {
         width="100%"
         height={1}
         flexDirection="row"
-        backgroundColor="#24283b"
+        backgroundColor={themeCtx.colors.bgAlt}
         paddingLeft={1}
       >
         <box width={nameWidth}>
-          <text fg={theme.dim}>SPAN NAME</text>
+          <text fg={themeCtx.colors.fgDim}>SPAN NAME</text>
         </box>
         <box width={serviceWidth}>
-          <text fg={theme.dim}>SERVICE</text>
+          <text fg={themeCtx.colors.fgDim}>SERVICE</text>
         </box>
         <box width={durationWidth}>
-          <text fg={theme.dim}>DURATION</text>
+          <text fg={themeCtx.colors.fgDim}>DURATION</text>
         </box>
         <box width={1}>
-          <text fg={theme.divider}>{"\u2502"}</text>
+          <text fg={themeCtx.colors.border}>{"\u2502"}</text>
         </box>
         {/* Time ruler — best-effort label placement */}
         <box flexGrow={1}>
-          <text fg={theme.rulerFg}>
+          <text fg={themeCtx.colors.fgDim}>
             {formatTimeRuler(traceDurationMs(), rulerWidth())}
           </text>
         </box>
@@ -348,7 +332,7 @@ export function TraceDetail() {
             const barLen = Math.max(1, Math.min(Math.round(durationFrac * ww), ww - startCol))
 
             const color = barColor(item.span)
-            const svcColor = svcColors().get(item.span.serviceName) ?? theme.dim
+            const svcColor = svcColors().get(item.span.serviceName) ?? themeCtx.colors.fgDim
 
             // For collapsed spans, show hidden count after the name
             const collapsedSuffix = item.isCollapsed && item.hiddenCount > 0
@@ -364,18 +348,18 @@ export function TraceDetail() {
                 width="100%"
                 height={1}
                 flexDirection="row"
-                backgroundColor={isSelected() ? theme.selected : theme.normal}
+                backgroundColor={isSelected() ? themeCtx.colors.bgHighlight : themeCtx.colors.bg}
                 paddingLeft={1}
               >
                 {/* Span name with tree prefix */}
                 <box width={nameWidth} flexDirection="row">
                   {prefix.length > 0 && (
                     <box width={prefix.length}>
-                      <text fg={item.hasChildren ? theme.collapseIndicator : theme.tree}>{prefix}</text>
+                      <text fg={item.hasChildren ? themeCtx.colors.accent : themeCtx.colors.fgDim}>{prefix}</text>
                     </box>
                   )}
                   <box flexGrow={1}>
-                    <text fg={isSelected() ? "#c0caf5" : theme.spanName}>
+                    <text fg={themeCtx.colors.fg}>
                       {nameStr}
                     </text>
                   </box>
@@ -390,14 +374,14 @@ export function TraceDetail() {
 
                 {/* Duration */}
                 <box width={durationWidth}>
-                  <text fg={theme.duration}>
+                  <text fg={themeCtx.colors.accent}>
                     {formatDuration(item.span.durationMs).padStart(durationWidth - 2)}
                   </text>
                 </box>
 
                 {/* Divider */}
                 <box width={1}>
-                  <text fg={theme.divider}>{"\u2502"}</text>
+                  <text fg={themeCtx.colors.border}>{"\u2502"}</text>
                 </box>
 
                 {/* Waterfall bar — character-level positioning for precision */}
@@ -405,7 +389,7 @@ export function TraceDetail() {
                   {/* Space before the bar */}
                   {startCol > 0 && (
                     <box width={startCol}>
-                      <text fg={theme.barBg}>{"\u2500".repeat(FILL)}</text>
+                      <text fg={themeCtx.colors.barFill}>{"\u2500".repeat(FILL)}</text>
                     </box>
                   )}
                   {/* The bar itself */}
@@ -414,7 +398,7 @@ export function TraceDetail() {
                   </box>
                   {/* Remaining space after the bar */}
                   <box flexGrow={1}>
-                    <text fg={theme.barBg}>{"\u2500".repeat(FILL)}</text>
+                    <text fg={themeCtx.colors.barFill}>{"\u2500".repeat(FILL)}</text>
                   </box>
                 </box>
               </box>
@@ -424,8 +408,8 @@ export function TraceDetail() {
       </box>
 
       {/* Footer */}
-      <box width="100%" height={1} backgroundColor={theme.header} paddingLeft={1} flexDirection="row">
-        <text fg={theme.dim}>
+      <box width="100%" height={1} backgroundColor={themeCtx.colors.border} paddingLeft={1} flexDirection="row">
+        <text fg={themeCtx.colors.fgDim}>
           {flatSpans().length} spans
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
           {flatSpans().length > 0 ? ` | ${cursor() + 1}/${flatSpans().length}` : ""}
@@ -434,10 +418,10 @@ export function TraceDetail() {
 
       {/* Search bar */}
       {filter.showSearch && (
-        <box width="100%" height={1} backgroundColor="#292e42" flexDirection="row" paddingLeft={1}>
-          <text fg={theme.duration}>/ </text>
-          <text fg="#c0caf5">{filter.searchQuery}</text>
-          <text fg={theme.duration}>_</text>
+        <box width="100%" height={1} backgroundColor={themeCtx.colors.bgHighlight} flexDirection="row" paddingLeft={1}>
+          <text fg={themeCtx.colors.accent}>/ </text>
+          <text fg={themeCtx.colors.fg}>{filter.searchQuery}</text>
+          <text fg={themeCtx.colors.accent}>_</text>
         </box>
       )}
     </box>
