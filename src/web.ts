@@ -203,6 +203,7 @@ a:hover{text-decoration:underline}
 .trace-table td{padding:6px 12px;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px}
 .trace-table tr.row{cursor:pointer}
 .trace-table tr.row:hover{background:var(--hover)}
+.trace-table tr.row.selected{background:var(--selected)}
 .trace-table .col-id{font-family:inherit;color:var(--text-dim);font-size:12px;max-width:100px}
 .trace-table .col-root{color:var(--text-bright);max-width:none}
 .trace-table .col-spans{text-align:right;color:var(--text-dim);width:70px}
@@ -309,6 +310,7 @@ a:hover{text-decoration:underline}
 .insight-detail{color:var(--text-dim)}
 .insight-action{color:var(--accent);cursor:pointer;white-space:nowrap}
 .insight-action:hover{text-decoration:underline}
+#kb-hint{position:fixed;bottom:0;left:0;right:0;padding:2px 8px;font-size:11px;color:var(--text-dim);background:var(--bg);border-top:1px solid var(--border);pointer-events:none;z-index:10}
 </style>
 </head>
 <body>
@@ -448,6 +450,8 @@ const globalServiceColors = assignServiceColors(allServices);
 let currentView = "list"; // "list" | "detail" | "insights"
 let currentTraceId = null;
 let selectedSpanId = null;
+let selectedRowIndex = -1;
+let selectedSpanIndex = -1;
 let searchQuery = "";
 let detailSearchQuery = "";
 let sortCol = "time";
@@ -623,14 +627,16 @@ function renderTableBody() {
     return;
   }
   let html = "";
-  for (const t of filtered) {
+  for (let i = 0; i < filtered.length; i++) {
+    const t = filtered[i];
     const statusCls = t.errorCount > 0 ? "badge-error" : "badge-ok";
     const statusText = t.errorCount > 0 ? t.errorCount + " error" + (t.errorCount > 1 ? "s" : "") : "OK";
     const svcs = t.services.map(s => {
       const c = globalServiceColors[s] || "#888";
       return '<span class="svc-tag" style="color:' + c + ";border-color:" + c + '44">' + esc(s) + "</span>";
     }).join("");
-    html += '<tr class="row" data-trace="' + esc(t.traceId) + '">'
+    const selCls = i === selectedRowIndex ? " selected" : "";
+    html += '<tr class="row' + selCls + '" data-trace="' + esc(t.traceId) + '">'
       + '<td class="col-id" title="' + esc(t.traceId) + '">' + shortId(t.traceId) + "</td>"
       + '<td class="col-root" title="' + esc(t.rootSpanName) + '">' + esc(t.rootSpanName) + "</td>"
       + '<td class="col-spans">' + t.spanCount + "</td>"
@@ -694,8 +700,8 @@ function renderInsights() {
     + '</div>';
 
   document.getElementById("breadcrumb-mount").innerHTML = '<div class="breadcrumb"><span id="bc-list">Traces</span> / Insights</div>';
-  document.getElementById("bc-list").addEventListener("click", () => { currentView = "list"; render(); });
-  document.getElementById("back-to-list").addEventListener("click", () => { currentView = "list"; render(); });
+  document.getElementById("bc-list").addEventListener("click", () => { selectedRowIndex = -1; currentView = "list"; render(); });
+  document.getElementById("back-to-list").addEventListener("click", () => { selectedRowIndex = -1; currentView = "list"; render(); });
   document.getElementById("refresh-insights").addEventListener("click", () => { renderInsights(); });
 
   const data = INSIGHTS;
@@ -772,6 +778,7 @@ function openTrace(traceId) {
   currentView = "detail";
   currentTraceId = traceId;
   selectedSpanId = null;
+  selectedSpanIndex = -1;
   collapsedSpans.clear();
   detailSearchQuery = "";
   detailMatchIndex = 0;
@@ -813,9 +820,7 @@ function renderTraceDetail() {
   // Breadcrumb
   document.getElementById("breadcrumb-mount").innerHTML =
     '<div class="breadcrumb"><span id="bc-list">Traces</span> / ' + shortId(trace.traceId) + "</div>";
-  document.getElementById("bc-list").addEventListener("click", () => { currentView = "list"; render(); });
-
-  const app = document.getElementById("app");
+  document.getElementById("bc-list").addEventListener("click", () => { selectedSpanIndex = -1; currentView = "list"; render(); });
   app.innerHTML =
     '<div class="detail-header">'
     + '<span class="trace-id" title="' + esc(trace.traceId) + '">' + shortId(trace.traceId, 16) + "</span>"
@@ -1351,7 +1356,100 @@ function fieldHtml(label, html) {
   return '<div class="span-field"><span class="label">' + esc(label) + '</span><span class="value">' + html + "</span></div>";
 }
 
-// === Init ===
+function getVisibleSpans() {
+  const trace = TRACES.find(t => t.traceId === currentTraceId);
+  if (!trace) return [];
+  const state = collectSearchState(trace.tree, detailSearchQuery, collapsedSpans);
+  return flattenTree(trace.tree, state.effectiveCollapsed)
+    .filter(item => state.matchedIds.size === 0 || state.matchedIds.has(item.span.spanId) || state.contextIds.has(item.span.spanId));
+}
+
+function handleKeydown(e) {
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+  if (currentView === "list") {
+    const filtered = getFilteredTraces();
+    const len = filtered.length;
+    if (e.key === "j" || e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedRowIndex = Math.min(selectedRowIndex + 1, len - 1);
+      renderTableBody();
+      const sel = document.querySelector("tr.row.selected");
+      if (sel) sel.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "k" || e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedRowIndex = Math.max(selectedRowIndex - 1, 0);
+      renderTableBody();
+      const sel = document.querySelector("tr.row.selected");
+      if (sel) sel.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") {
+      if (selectedRowIndex >= 0 && selectedRowIndex < len) {
+        openTrace(filtered[selectedRowIndex].traceId);
+      }
+    } else if (e.key === "/") {
+      e.preventDefault();
+      const input = document.getElementById("search-input");
+      if (input) input.focus();
+    } else if (e.key === "Escape") {
+      selectedRowIndex = -1;
+      renderTableBody();
+    }
+  } else if (currentView === "detail") {
+    const flat = getVisibleSpans();
+    const len = flat.length;
+    if (e.key === "j" || e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedSpanIndex = Math.min(selectedSpanIndex + 1, len - 1);
+      if (selectedSpanIndex >= 0) selectedSpanId = flat[selectedSpanIndex].span.spanId;
+      const trace = TRACES.find(t => t.traceId === currentTraceId);
+      if (trace) {
+        const svcColors = assignServiceColors(trace.services);
+        renderWaterfall(trace, svcColors);
+        const row = document.querySelector('tr[data-span="' + selectedSpanId + '"]');
+        if (row) row.scrollIntoView({ block: "nearest" });
+      }
+    } else if (e.key === "k" || e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedSpanIndex = Math.max(selectedSpanIndex - 1, 0);
+      if (selectedSpanIndex >= 0) selectedSpanId = flat[selectedSpanIndex].span.spanId;
+      const trace = TRACES.find(t => t.traceId === currentTraceId);
+      if (trace) {
+        const svcColors = assignServiceColors(trace.services);
+        renderWaterfall(trace, svcColors);
+        const row = document.querySelector('tr[data-span="' + selectedSpanId + '"]');
+        if (row) row.scrollIntoView({ block: "nearest" });
+      }
+    } else if (e.key === "Enter") {
+      if (selectedSpanId) {
+        const trace = TRACES.find(t => t.traceId === currentTraceId);
+        if (trace) {
+          const svcColors = assignServiceColors(trace.services);
+          renderSpanPanel(trace, selectedSpanId, svcColors);
+        }
+      }
+    } else if (e.key === " ") {
+      e.preventDefault();
+      if (selectedSpanId) {
+        if (collapsedSpans.has(selectedSpanId)) collapsedSpans.delete(selectedSpanId);
+        else collapsedSpans.add(selectedSpanId);
+        const trace = TRACES.find(t => t.traceId === currentTraceId);
+        if (trace) {
+          const svcColors = assignServiceColors(trace.services);
+          renderWaterfall(trace, svcColors);
+        }
+      }
+    } else if (e.key === "Escape" || e.key === "h") {
+      selectedRowIndex = -1;
+      selectedSpanIndex = -1;
+      selectedSpanId = null;
+      currentView = "list";
+      render();
+    }
+  }
+}
+
+
 (function() {
   const saved = localStorage.getItem("tawny-theme");
   const initial = (saved && THEME_DATA[saved]) ? saved : DEFAULT_THEME_ID;
@@ -1363,9 +1461,11 @@ function fieldHtml(label, html) {
     setTheme(id);
     localStorage.setItem("tawny-theme", id);
   });
+  document.addEventListener("keydown", handleKeydown);
 })();
 render();
 </script>
+<div id="kb-hint">j/k navigate &middot; Enter open &middot; / search &middot; Esc back</div>
 </body>
 </html>`
 }
