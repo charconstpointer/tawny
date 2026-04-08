@@ -44,7 +44,7 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
         })
       },
       clearServices() {
-        setSelectedServices(new Set())
+        setSelectedServices(new Set<string>())
       },
       toggleServiceFilter() {
         setShowServiceFilter((v) => !v)

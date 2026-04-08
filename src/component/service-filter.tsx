@@ -62,8 +62,10 @@ export function ServiceFilter() {
       position="absolute"
       width={50}
       height={Math.min(services().length + 4, 20)}
-      left="50%-25"
-      top="50%-10"
+      left="50%"
+      top="50%"
+      marginLeft={-25}
+      marginTop={-10}
       borderStyle="rounded"
       border
       borderColor={theme.border}
