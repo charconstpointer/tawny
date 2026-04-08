@@ -1,4 +1,12 @@
+import { readFileSync } from "fs"
+import { resolve } from "path"
 import type { TraceSummary, ParsedSpan, ParsedEvent } from "./types"
+
+declare global {
+  interface ImportMeta {
+    readonly dir: string
+  }
+}
 
 // --- Serializable types for embedding in HTML ---
 
@@ -84,6 +92,8 @@ function convertTrace(t: TraceSummary): WebTrace {
   }
 }
 
+const logoBase64 = readFileSync(resolve(import.meta.dir, "../assets/logo.png")).toString("base64")
+
 // --- HTML generation ---
 
 export function generateHtml(traces: TraceSummary[]): string {
@@ -111,6 +121,7 @@ a:hover{text-decoration:underline}
 
 /* Header */
 .header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.header img{display:block;flex-shrink:0}
 .header h1{font-size:15px;font-weight:600;color:var(--text-bright)}
 .header .subtitle{color:var(--text-dim);font-size:12px}
 .header .stats{margin-left:auto;color:var(--text-dim);font-size:12px}
@@ -234,6 +245,7 @@ a:hover{text-decoration:underline}
 <body>
 
 <div class="header">
+  <img src="data:image/png;base64,${logoBase64}" alt="Tawny" width="28" height="28" style="border-radius:4px">
   <h1>Tawny</h1>
   <span class="subtitle">OpenTelemetry Trace Viewer</span>
   <span class="stats" id="stats"></span>
