@@ -129,6 +129,7 @@ a:hover{text-decoration:underline}
 .header h1{font-size:15px;font-weight:600;color:var(--text-bright)}
 .header .subtitle{color:var(--text-dim);font-size:12px}
 .header .stats{margin-left:auto;color:var(--text-dim);font-size:12px}
+.header .stats.warn{color:var(--warn)}
 
 /* Toolbar */
 .toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
@@ -280,6 +281,7 @@ a:hover{text-decoration:underline}
 // === Embedded trace data ===
 const TRACES = ${data};
 const INSIGHTS = ${insights};
+const REPORT_BYTES = ${Buffer.byteLength(data, "utf8")};
 
 // === Helpers ===
 const SERVICE_COLORS = ${JSON.stringify(theme.servicePalette)};
@@ -357,7 +359,15 @@ let detailMatchIndex = 0;
 
 // === Stats ===
 const totalSpans = TRACES.reduce((s, t) => s + t.spanCount, 0);
-document.getElementById("stats").textContent = TRACES.length + " traces \\u00b7 " + totalSpans + " spans";
+const statsEl = document.getElementById("stats");
+const reportSizeMb = (REPORT_BYTES / (1024 * 1024)).toFixed(1);
+const heavyReport = TRACES.length >= 200 || totalSpans >= 20000 || REPORT_BYTES >= 5 * 1024 * 1024;
+statsEl.textContent = TRACES.length + " traces \\u00b7 " + totalSpans + " spans \\u00b7 " + reportSizeMb + " MB embedded";
+if (heavyReport) {
+  statsEl.textContent += " \\u00b7 large report";
+  statsEl.classList.add("warn");
+  statsEl.title = "This export embeds a large dataset and may feel heavier to search or render in the browser.";
+}
 
 // === Rendering ===
 
