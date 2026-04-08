@@ -46,7 +46,7 @@ function printUsage() {
   console.log("  --web            Output a self-contained HTML report to stdout")
   console.log(`  --serve [addr]   Serve the HTML report over HTTP (default: ${DEFAULT_SERVE_ADDRESS})`)
   console.log("                   Address format: host[:port] or http://host[:port]")
-  console.log("  --theme <name>   Theme to use (tokyo-night, catppuccin-mocha, dracula, nord, gruvbox-dark)")
+  console.log("  --theme <name>   Theme to use (tokyo-night, solarized-light, catppuccin-mocha, dracula, nord, gruvbox-dark)")
   console.log("")
   console.log("Navigation (TUI mode):")
   console.log("  j/k or arrows    Navigate up/down")

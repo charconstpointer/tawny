@@ -57,6 +57,40 @@ const tokyoNight: Theme = {
   ],
 }
 
+const solarizedLight: Theme = {
+  name: "Solarized Light",
+  id: "solarized-light",
+  colors: {
+    bg: "#fdf6e3",
+    bgAlt: "#eee8d5",
+    bgHighlight: "#e4ddd0",
+    fg: "#657b83",
+    fgDim: "#93a1a1",
+    border: "#d3cbbe",
+    accent: "#268bd2",
+    accent2: "#6c71c4",
+    accent3: "#2aa198",
+    success: "#859900",
+    warning: "#b58900",
+    error: "#dc322f",
+    headerBg: "#eee8d5",
+    headerFg: "#586e75",
+    barFill: "#eee8d5",
+  },
+  servicePalette: [
+    "#268bd2",
+    "#2aa198",
+    "#859900",
+    "#b58900",
+    "#cb4b16",
+    "#dc322f",
+    "#6c71c4",
+    "#d33682",
+    "#657b83",
+    "#586e75",
+  ],
+}
+
 const catppuccinMocha: Theme = {
   name: "Catppuccin Mocha",
   id: "catppuccin-mocha",
@@ -195,6 +229,7 @@ const gruvboxDark: Theme = {
 
 export const THEMES: Record<string, Theme> = {
   "tokyo-night": tokyoNight,
+  "solarized-light": solarizedLight,
   "catppuccin-mocha": catppuccinMocha,
   dracula,
   nord,
