@@ -6,6 +6,14 @@ bun.lock
 *.log
 .env
 .env.*
-otel-traces.json
+# Generated reports and local working files
+report.html
 bootstrap.json
+
+# Trace artifacts: keep the canonical sample JSON, ignore bulk dumps
 *.jsonl
+*.ndjson
+*.trace.json
+*-traces.json
+otel-traces.json
+!traces.json
