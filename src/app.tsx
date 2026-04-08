@@ -10,6 +10,7 @@ import { TraceDetail } from "./component/trace-detail"
 import { SpanDetail } from "./component/span-detail"
 import { TraceFlamegraph } from "./component/trace-flamegraph"
 import { ServiceFilter } from "./component/service-filter"
+import { HelpOverlay } from "./component/help-overlay"
 import { ThemePicker } from "./component/theme-picker"
 import { StatusBar } from "./component/status-bar"
 import type { TraceSummary } from "./types"
@@ -18,6 +19,15 @@ function AppContent() {
   const route = useRoute()
   const filter = useFilter()
   const theme = useTheme()
+
+  useKeyboard((key) => {
+    if (filter.showHelp) return
+    if (filter.showServiceFilter || theme.showThemePicker) return
+
+    if (key.name === "?") {
+      filter.toggleHelp()
+    }
+  })
 
   return (
     <box
@@ -68,6 +78,9 @@ function AppContent() {
       </Show>
       <Show when={theme.showThemePicker}>
         <ThemePicker />
+      </Show>
+      <Show when={filter.showHelp}>
+        <HelpOverlay />
       </Show>
     </box>
   )

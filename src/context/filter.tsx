@@ -8,6 +8,7 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
     const [selectedServices, setSelectedServices] = createSignal<Set<string>>(new Set())
     const [showServiceFilter, setShowServiceFilter] = createSignal(false)
     const [showSearch, setShowSearch] = createSignal(false)
+    const [showHelp, setShowHelp] = createSignal(false)
     const [minSpans, setMinSpans] = createSignal(0)
     const [errorOnly, setErrorOnly] = createSignal<boolean>(false)
     const [minDurationMs, setMinDurationMs] = createSignal<number>(0)
@@ -29,6 +30,9 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
       },
       get showSearch() {
         return showSearch()
+      },
+      get showHelp() {
+        return showHelp()
       },
       get minSpans() {
         return minSpans()
@@ -62,6 +66,9 @@ export const { use: useFilter, provider: FilterProvider } = createSimpleContext(
       },
       toggleServiceFilter() {
         setShowServiceFilter((v) => !v)
+      },
+      toggleHelp() {
+        setShowHelp((v) => !v)
       },
       closeServiceFilter() {
         setShowServiceFilter(false)

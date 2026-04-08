@@ -57,6 +57,11 @@
 - Cycling selectors are easiest to keep consistent when the threshold arrays stay module-local and the next value is derived with `indexOf` + modulo
 - New context fields should be exported directly from the `return { ... }` object so downstream components can consume them without extra plumbing
 
+## [2026-04-09] Help overlay implementation
+- Reused the existing overlay pattern from `theme-picker.tsx`: centered absolute `<box>`, `useKeyboard`, and close-on-Esc behavior
+- A global `?` handler works well in `app.tsx` as long as it bails out while the help overlay is already open to avoid double toggles
+- Keeping help state in `Filter` context avoids another provider and keeps overlay visibility alongside other transient UI state
+
 ## [2026-04-09] Trace list dynamic sorting
 - The trace list should sort from a memoized filtered list, then apply a second memo for the active sort key so keyboard-driven sort cycling stays reactive
 - When list order changes, selection should reset and all row navigation should read from the sorted array, not the filtered one
@@ -98,3 +103,5 @@ The `:root` CSS custom properties in the generated HTML use different names than
 ### Playwright verification
 - `page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim())` to check computed bg
 - `dispatchEvent(new Event('change'))` to trigger select change listener programmatically
+ - Added a cyclic min-spans filter button to the web report toolbar, mirroring the existing service-filter button pattern.
+ - Trace list filtering can be layered cleanly in getFilteredTraces() by applying span-count thresholds before search/sort.
