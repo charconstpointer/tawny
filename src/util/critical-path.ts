@@ -1,6 +1,8 @@
 import type { ParsedSpan } from "../types"
 
 export function computeCriticalPath(spans: ParsedSpan[]): Set<string> {
+  if (spans.length === 0) return new Set<string>()
+
   const spanIds = new Set(spans.map(span => span.spanId))
   const childrenByParent = new Map<string, ParsedSpan[]>()
 
@@ -15,7 +17,13 @@ export function computeCriticalPath(spans: ParsedSpan[]): Set<string> {
   }
 
   const roots = spans.filter(span => !span.parentSpanId || !spanIds.has(span.parentSpanId))
+  const root = roots.reduce((latest, span) => {
+    if (!latest || span.endTimeNano > latest.endTimeNano) return span
+    return latest
+  }, roots[0])
   const criticalPath = new Set<string>()
+
+  if (!root) return criticalPath
 
   const walk = (span: ParsedSpan) => {
     criticalPath.add(span.spanId)
@@ -33,9 +41,7 @@ export function computeCriticalPath(spans: ParsedSpan[]): Set<string> {
     walk(criticalChild)
   }
 
-  for (const root of roots) {
-    walk(root)
-  }
+  walk(root)
 
   return criticalPath
 }

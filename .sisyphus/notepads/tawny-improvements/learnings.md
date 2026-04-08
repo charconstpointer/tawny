@@ -105,3 +105,9 @@ The `:root` CSS custom properties in the generated HTML use different names than
 - `dispatchEvent(new Event('change'))` to trigger select change listener programmatically
  - Added a cyclic min-spans filter button to the web report toolbar, mirroring the existing service-filter button pattern.
  - Trace list filtering can be layered cleanly in getFilteredTraces() by applying span-count thresholds before search/sort.
+
+## [2026-04-09] T12 — Critical path highlighting in TUI waterfall
+- A small standalone util works best here: `computeCriticalPath(spans)` can rebuild a parent→children map from flat spans rather than depending on prebuilt tree roots.
+- The requested greedy algorithm is straightforward: treat spans with missing/nonexistent parents as roots, then walk each root by repeatedly choosing the child with the latest `endTimeNano`.
+- In `trace-detail.tsx`, critical-path highlighting composes cleanly with the existing search rendering by computing a memoized `Set<string>` and only changing span-name prefix/color, leaving waterfall bars untouched.
+- For traces with multiple roots or orphaned spans, selecting the root with the latest `endTimeNano` avoids incorrectly highlighting multiple disconnected branches while still preserving the simple greedy approach.
