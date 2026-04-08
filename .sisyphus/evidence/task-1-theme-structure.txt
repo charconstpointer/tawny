@@ -1,0 +1,3 @@
+theme ids: tokyo-night, catppuccin-mocha, dracula, nord, gruvbox-dark
+default theme id: tokyo-night
+theme exports: ThemeColors, Theme, THEMES, DEFAULT_THEME_ID

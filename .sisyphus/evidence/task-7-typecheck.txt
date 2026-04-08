@@ -1,0 +1,7 @@
+src/component/service-filter.tsx(65,7): error TS2322: Type '"50%-25"' is not assignable to type 'number | "auto" | `${number}%` | undefined'.
+src/component/service-filter.tsx(66,7): error TS2322: Type '"50%-10"' is not assignable to type 'number | "auto" | `${number}%` | undefined'.
+src/context/filter.tsx(47,29): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'Set<unknown>' is not assignable to parameter of type 'Set<string> | ((prev: Set<string>) => Set<string>)'.
+      Type 'Set<unknown>' is not assignable to type 'Set<string>'.
+        Type 'unknown' is not assignable to type 'string'.

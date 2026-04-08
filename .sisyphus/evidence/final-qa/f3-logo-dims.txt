@@ -1,0 +1,4 @@
+/Users/mo/Documents/dev/tawny/assets/logo.png
+  pixelWidth: 128
+  pixelHeight: 128
+-rw-r--r--@ 1 mo  staff    12K Apr  8 16:42 assets/logo.png

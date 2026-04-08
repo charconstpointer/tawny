@@ -3,6 +3,7 @@ import { render, useKeyboard } from "@opentui/solid"
 import { RouteProvider, useRoute } from "./context/route"
 import { TracesProvider, useTraces } from "./context/traces"
 import { FilterProvider, useFilter } from "./context/filter"
+import { ThemeProvider, useTheme } from "./context/theme"
 import { TraceList } from "./component/trace-list"
 import { TraceDetail } from "./component/trace-detail"
 import { SpanDetail } from "./component/span-detail"
@@ -14,24 +15,25 @@ import type { TraceSummary } from "./types"
 function AppContent() {
   const route = useRoute()
   const filter = useFilter()
+  const theme = useTheme()
 
   return (
     <box
       flexDirection="column"
       width="100%"
       height="100%"
-      backgroundColor="#1a1b26"
+      backgroundColor={theme.colors.bg}
     >
       {/* Title */}
       <box
         width="100%"
         height={1}
-        backgroundColor="#1a1b26"
+        backgroundColor={theme.colors.bg}
         flexDirection="row"
         paddingLeft={1}
       >
-        <text fg="#7aa2f7">OpenTUI Traces</text>
-        <text fg="#565f89"> - OpenTelemetry Trace Viewer</text>
+        <text fg={theme.colors.accent}>OpenTUI Traces</text>
+        <text fg={theme.colors.fgDim}> - OpenTelemetry Trace Viewer</text>
       </box>
 
       {/* Main content */}
@@ -59,6 +61,9 @@ function AppContent() {
       <Show when={filter.showServiceFilter}>
         <ServiceFilter />
       </Show>
+      <Show when={theme.showThemePicker}>
+        <box />
+      </Show>
     </box>
   )
 }
@@ -70,15 +75,25 @@ function TracesLoader(props: { traces: TraceSummary[] }) {
   return <></>
 }
 
-export function tui(traces: TraceSummary[]) {
+/** Helper component that sets the active theme on mount */
+function ThemeLoader(props: { themeId: string }) {
+  const themeCtx = useTheme()
+  themeCtx.setTheme(props.themeId)
+  return <></>
+}
+
+export function tui(traces: TraceSummary[], themeId = "tokyo-night") {
   render(
     () => (
       <RouteProvider>
         <TracesProvider>
-          <FilterProvider>
-            <TracesLoader traces={traces} />
-            <AppContent />
-          </FilterProvider>
+          <ThemeProvider>
+            <FilterProvider>
+              <TracesLoader traces={traces} />
+              <ThemeLoader themeId={themeId} />
+              <AppContent />
+            </FilterProvider>
+          </ThemeProvider>
         </TracesProvider>
       </RouteProvider>
     ),

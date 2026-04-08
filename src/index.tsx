@@ -3,12 +3,14 @@ import { resolve } from "path"
 import { parseJsonl } from "./parser"
 import { tui } from "./app"
 import { generateHtml } from "./web"
+import { readConfig } from "./config"
+import { THEMES, DEFAULT_THEME_ID } from "./themes"
 
 function main() {
   const args = process.argv.slice(2)
 
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-    console.log("Usage: opentui-traces [--web] <traces.jsonl>")
+    console.log("Usage: opentui-traces [--web] [--theme <name>] <traces.jsonl>")
     console.log("")
     console.log("OpenTUI Traces - OpenTelemetry JSONL Trace Viewer")
     console.log("")
@@ -17,6 +19,7 @@ function main() {
     console.log("")
     console.log("Options:")
     console.log("  --web            Output a self-contained HTML report to stdout")
+    console.log("  --theme <name>   Theme to use (tokyo-night, catppuccin-mocha, dracula, nord, gruvbox-dark)")
     console.log("")
     console.log("Navigation (TUI mode):")
     console.log("  j/k or arrows    Navigate up/down")
@@ -29,11 +32,15 @@ function main() {
   }
 
   const webMode = args.includes("--web")
-  const fileArgs = args.filter(a => a !== "--web")
+  const themeArg = (() => {
+    const idx = args.indexOf("--theme")
+    return idx !== -1 ? args[idx + 1] : undefined
+  })()
+  const fileArgs = args.filter((a, i) => a !== "--web" && a !== "--theme" && args[i - 1] !== "--theme")
 
   if (fileArgs.length === 0) {
     console.error("Error: no input file specified.")
-    console.error("Usage: opentui-traces [--web] <traces.jsonl>")
+    console.error("Usage: opentui-traces [--web] [--theme <name>] <traces.jsonl>")
     process.exit(1)
   }
 
@@ -60,9 +67,14 @@ function main() {
     return
   }
 
+  const configTheme = readConfig().theme
+  const resolvedThemeId = (themeArg && themeArg in THEMES ? themeArg : undefined)
+    ?? (configTheme && configTheme in THEMES ? configTheme : undefined)
+    ?? DEFAULT_THEME_ID
+
   console.log(`Loaded ${traces.length} traces with ${traces.reduce((sum, t) => sum + t.spanCount, 0)} total spans`)
 
-  tui(traces)
+  tui(traces, resolvedThemeId)
 }
 
 main()
