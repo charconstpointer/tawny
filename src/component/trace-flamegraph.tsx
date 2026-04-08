@@ -26,8 +26,6 @@ const theme = {
   zoom: "#e0af68",
 }
 
-const FILL = 2000
-
 interface LayoutBlock {
   span: ParsedSpan
   startCol: number
@@ -170,39 +168,49 @@ function buildAggregatedLayout(
 }
 
 function buildRowSegments(row: LayoutRow | undefined, width: number, selectedIndex: number): RowSegment[] {
-  const segments: RowSegment[] = []
   const safeWidth = Math.max(1, width)
 
   if (!row || row.blocks.length === 0) {
     return [{ type: "fill", width: safeWidth, color: theme.fill, selected: false }]
   }
 
-  let col = 0
+  const columns: (LayoutBlock | null)[] = new Array(safeWidth).fill(null)
 
-  for (let i = 0; i < row.blocks.length && col < safeWidth; i++) {
-    const block = row.blocks[i]
-    const start = Math.max(col, block.startCol)
+  for (const block of row.blocks) {
+    const end = Math.min(block.startCol + block.width, safeWidth)
+    for (let col = block.startCol; col < end; col++) {
+      columns[col] = block
+    }
+  }
 
-    if (start > col) {
-      segments.push({ type: "fill", width: start - col, color: theme.fill, selected: false })
-      col = start
+  const segments: RowSegment[] = []
+  let i = 0
+
+  while (i < safeWidth) {
+    const block = columns[i]
+    let j = i + 1
+    while (j < safeWidth && columns[j] === block) {
+      j++
     }
 
-    const end = Math.max(start, Math.min(safeWidth, block.startCol + block.width))
-    if (end > start) {
+    if (block) {
       segments.push({
         type: "block",
-        width: end - start,
+        width: j - i,
         color: theme.duration,
         selected: block.indexInRow === selectedIndex,
         span: block.span,
       })
-      col = end
+    } else {
+      segments.push({
+        type: "fill",
+        width: j - i,
+        color: theme.fill,
+        selected: false,
+      })
     }
-  }
 
-  if (col < safeWidth) {
-    segments.push({ type: "fill", width: safeWidth - col, color: theme.fill, selected: false })
+    i = j
   }
 
   return segments
@@ -456,8 +464,8 @@ export function TraceFlamegraph() {
                     <box width={segment.width}>
                       <text fg={segment.span ? barColor(segment.span) : segment.color}>
                         {segment.type === "block"
-                          ? (segment.selected ? "▓" : "█").repeat(FILL)
-                          : "─".repeat(FILL)}
+                          ? (segment.selected ? "▓" : "█").repeat(segment.width)
+                          : "─".repeat(segment.width)}
                       </text>
                     </box>
                   )}
