@@ -5,7 +5,6 @@ import type {
   ParsedSpan,
   ParsedEvent,
   TraceSummary,
-  StatusCodeName,
 } from "./types"
 import { SpanKind, StatusCode } from "./types"
 
@@ -19,7 +18,7 @@ function resolveValue(v: OtlpValue): string {
     return JSON.stringify(v.arrayValue.values.map(resolveValue))
   }
   if (v.kvlistValue && v.kvlistValue.values) {
-    const obj: Record<string, string> = {}
+    const obj: Record<string, string> = Object.create(null)
     for (const a of v.kvlistValue.values) obj[a.key] = resolveValue(a.value)
     return JSON.stringify(obj)
   }
@@ -39,6 +38,17 @@ function getAttr(attrs: OtlpAttribute[] | undefined, key: string): string {
   if (!attrs) return ""
   const found = attrs.find((a) => a.key === key)
   return found ? resolveValue(found.value) : ""
+}
+
+function parseBigInt(value: unknown): bigint | undefined {
+  if (typeof value === "string" && !/^[-+]?\d+$/.test(value.trim())) return undefined
+
+  try {
+    return BigInt(value as string | number | bigint)
+  } catch (err: unknown) {
+    if (err instanceof TypeError || err instanceof RangeError) return undefined
+    throw err
+  }
 }
 
 export function parseJsonl(content: string): TraceSummary[] {
@@ -63,8 +73,21 @@ export function parseJsonl(content: string): TraceSummary[] {
 
       for (const ss of rs.scopeSpans) {
         for (const span of ss.spans) {
-          const startNano = BigInt(span.startTimeUnixNano)
-          const endNano = BigInt(span.endTimeUnixNano)
+          if (
+            span.startTimeUnixNano === undefined ||
+            span.startTimeUnixNano === null ||
+            span.endTimeUnixNano === undefined ||
+            span.endTimeUnixNano === null ||
+            !span.traceId ||
+            !span.spanId
+          ) {
+            continue
+          }
+
+          const startNano = parseBigInt(span.startTimeUnixNano)
+          const endNano = parseBigInt(span.endTimeUnixNano)
+          if (startNano === undefined || endNano === undefined) continue
+
           const durationNano = endNano - startNano
 
           const parsed: ParsedSpan = {
@@ -84,13 +107,18 @@ export function parseJsonl(content: string): TraceSummary[] {
             status: StatusCode[(span.status?.code ?? 0) as keyof typeof StatusCode] ?? "UNSET",
             statusMessage: span.status?.message ?? "",
             attributes: attrsToMap(span.attributes),
-            events: (span.events ?? []).map(
-              (e): ParsedEvent => ({
-                timeNano: BigInt(e.timeUnixNano),
-                name: e.name,
-                attributes: attrsToMap(e.attributes),
-              })
-            ),
+            events: (span.events ?? []).flatMap((e): ParsedEvent[] => {
+              const timeNano = parseBigInt(e.timeUnixNano)
+              if (timeNano === undefined) return []
+
+              return [
+                {
+                  timeNano,
+                  name: e.name,
+                  attributes: attrsToMap(e.attributes),
+                },
+              ]
+            }),
             children: [],
           }
 
