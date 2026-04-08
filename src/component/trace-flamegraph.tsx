@@ -96,6 +96,78 @@ function buildLayout(
   }))
 }
 
+function buildAggregatedLayout(
+  roots: ParsedSpan[],
+  traceTotalMs: number,
+  termWidth: number,
+): LayoutRow[] {
+  const safeWidth = Math.max(1, termWidth)
+  const safeDurationMs = traceTotalMs > 0 ? traceTotalMs : 1
+
+  const depthMap = new Map<number, Map<string, { totalDurationMs: number; span: ParsedSpan }>>()
+
+  function walk(spans: ParsedSpan[], depth: number, ancestorPath: string) {
+    if (!depthMap.has(depth)) depthMap.set(depth, new Map())
+    const levelMap = depthMap.get(depth)!
+
+    for (const span of spans) {
+      const key = ancestorPath
+        ? `${ancestorPath} > ${span.serviceName}:${span.name}`
+        : `${span.serviceName}:${span.name}`
+
+      const existing = levelMap.get(key)
+      if (existing) {
+        existing.totalDurationMs += span.durationMs
+      } else {
+        levelMap.set(key, { totalDurationMs: span.durationMs, span })
+      }
+
+      if (span.children.length > 0) {
+        walk(span.children, depth + 1, key)
+      }
+    }
+  }
+
+  walk(roots, 0, "")
+
+  const rows: LayoutRow[] = []
+
+  const depths = Array.from(depthMap.keys()).sort((a, b) => a - b)
+  for (const depth of depths) {
+    const levelMap = depthMap.get(depth)!
+
+    const entries = Array.from(levelMap.entries()).sort(([a], [b]) => {
+      const aLeaf = a.split(" > ").pop() ?? a
+      const bLeaf = b.split(" > ").pop() ?? b
+      return aLeaf.localeCompare(bLeaf)
+    })
+
+    const blocks: LayoutBlock[] = []
+    let col = 0
+
+    for (let i = 0; i < entries.length; i++) {
+      const [, { totalDurationMs, span }] = entries[i]
+      const width = Math.max(1, Math.round((totalDurationMs / safeDurationMs) * safeWidth))
+      const clampedWidth = Math.min(width, safeWidth - col)
+      if (clampedWidth <= 0) break
+
+      blocks.push({
+        span,
+        startCol: col,
+        width: clampedWidth,
+        rowIndex: depth,
+        indexInRow: i,
+      })
+
+      col += clampedWidth
+    }
+
+    rows.push({ depth, blocks })
+  }
+
+  return rows
+}
+
 function buildRowSegments(row: LayoutRow | undefined, width: number, selectedIndex: number): RowSegment[] {
   const segments: RowSegment[] = []
   const safeWidth = Math.max(1, width)
@@ -140,6 +212,7 @@ export function TraceFlamegraph() {
   const traces = useTraces()
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
+  const [mode, setMode] = createSignal<"icicle" | "aggregated">("icicle")
 
   const visibleHeight = () => Math.max(3, (process.stdout.rows ?? 30) - 5)
 
@@ -165,6 +238,9 @@ export function TraceFlamegraph() {
   const layoutRows = createMemo(() => {
     const t = trace()
     if (!t) return []
+    if (mode() === "aggregated") {
+      return buildAggregatedLayout(t.tree, t.durationMs, graphWidth())
+    }
     return buildLayout(t.tree, t.durationMs, t.startTimeNano, graphWidth())
   })
 
@@ -246,6 +322,10 @@ export function TraceFlamegraph() {
     } else if (key.name === "g") {
       syncCursor(0)
     }
+    if (key.name === "m") {
+      setMode(m => m === "icicle" ? "aggregated" : "icicle")
+      syncCursor(0)
+    }
     if (key.name === "escape") {
       route.back()
     }
@@ -263,8 +343,9 @@ export function TraceFlamegraph() {
 
   const infoLine = createMemo(() => {
     const selected = selectedBlock()
-    if (!selected) return "No spans"
-    const value = `${selected.span.name} · ${selected.span.serviceName} · ${formatDuration(selected.span.durationMs)} · ${cursor() + 1}/${flatBlocks().length}`
+    const modeLabel = mode() === "icicle" ? "Icicle" : "Aggregated"
+    if (!selected) return `No spans · Mode: ${modeLabel}`
+    const value = `${selected.span.name} · ${selected.span.serviceName} · ${formatDuration(selected.span.durationMs)} · ${cursor() + 1}/${flatBlocks().length} · Mode: ${modeLabel}`
     return truncate(value, Math.max(1, graphWidth()))
   })
 

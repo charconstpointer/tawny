@@ -220,6 +220,10 @@ a:hover{text-decoration:underline}
 .fg-bar{position:absolute;top:0;height:20px;border-radius:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:20px;padding:0 4px;color:#000;opacity:0.85;cursor:default;min-width:2px}
 .fg-bar:hover{opacity:1;z-index:1}
 .fg-bar-label{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;pointer-events:none}
+.fg-mode-tabs{display:flex;gap:6px;margin-bottom:10px}
+.fg-mode-tab{padding:3px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer}
+.fg-mode-tab:hover{background:var(--hover);color:var(--text)}
+.fg-mode-tab.active{border-color:var(--accent);color:var(--accent);background:var(--hover)}
 </style>
 </head>
 <body>
@@ -677,6 +681,42 @@ function collectByDepth(tree, depth, rows) {
   }
 }
 
+function buildAggregatedRows(tree, traceDur) {
+  var safeDur = traceDur > 0 ? traceDur : 1;
+  var depthMap = new Map();
+
+  function walkAgg(spans, depth, ancestorPath) {
+    if (!depthMap.has(depth)) depthMap.set(depth, new Map());
+    var levelMap = depthMap.get(depth);
+    for (var i = 0; i < spans.length; i++) {
+      var span = spans[i];
+      var key = ancestorPath ? ancestorPath + " > " + span.serviceName + ":" + span.name : span.serviceName + ":" + span.name;
+      if (levelMap.has(key)) {
+        levelMap.get(key).totalDurationMs += span.durationMs;
+      } else {
+        levelMap.set(key, { totalDurationMs: span.durationMs, span: span });
+      }
+      if (span.children && span.children.length > 0) walkAgg(span.children, depth + 1, key);
+    }
+  }
+
+  walkAgg(tree, 0, "");
+
+  var depths = Array.from(depthMap.keys()).sort(function(a, b) { return a - b; });
+  var rows = [];
+  for (var di = 0; di < depths.length; di++) {
+    var depth = depths[di];
+    var levelMap = depthMap.get(depth);
+    var entries = Array.from(levelMap.entries()).sort(function(a, b) {
+      var aLeaf = a[0].split(" > ").pop() || a[0];
+      var bLeaf = b[0].split(" > ").pop() || b[0];
+      return aLeaf < bLeaf ? -1 : aLeaf > bLeaf ? 1 : 0;
+    });
+    rows.push({ depth: depth, entries: entries, safeDur: safeDur });
+  }
+  return rows;
+}
+
 function renderFlamegraph(trace, svcColors) {
   const container = document.getElementById("fg-container");
   if (!container) return;
@@ -686,22 +726,83 @@ function renderFlamegraph(trace, svcColors) {
   const rows = [];
   collectByDepth(trace.tree, 0, rows);
 
-  let html = "";
-  for (let d = 0; d < rows.length; d++) {
-    html += '<div class="fg-row">';
-    for (const span of rows[d]) {
-      const leftPct = ((span.startTimeMs - traceStart) / traceDur) * 100;
-      const widthPct = Math.max(0.3, (span.durationMs / traceDur) * 100);
-      const isError = span.status === "ERROR";
-      const bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
-      html += '<div class="fg-bar" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(span.name) + " [" + formatDuration(span.durationMs) + "]" + '">'
-        + '<span class="fg-bar-label">' + esc(span.name) + "</span>"
-        + "</div>";
+  function buildIcicleHtml() {
+    let html = "";
+    for (let d = 0; d < rows.length; d++) {
+      html += '<div class="fg-row">';
+      for (const span of rows[d]) {
+        const leftPct = ((span.startTimeMs - traceStart) / traceDur) * 100;
+        const widthPct = Math.max(0.3, (span.durationMs / traceDur) * 100);
+        const isError = span.status === "ERROR";
+        const bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
+        html += '<div class="fg-bar" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(span.name) + " [" + formatDuration(span.durationMs) + "]" + '">'
+          + '<span class="fg-bar-label">' + esc(span.name) + "</span>"
+          + "</div>";
+      }
+      html += "</div>";
     }
-    html += "</div>";
+    return html || '<div style="padding:20px;color:var(--text-dim)">No spans to display.</div>';
   }
 
-  container.innerHTML = html || '<div style="padding:20px;color:var(--text-dim)">No spans to display.</div>';
+  function buildAggregatedHtml() {
+    const aggRows = buildAggregatedRows(trace.tree, traceDur);
+    let html = "";
+    for (let ri = 0; ri < aggRows.length; ri++) {
+      const row = aggRows[ri];
+      html += '<div class="fg-row" style="position:relative">';
+      let leftPct = 0;
+      for (let ei = 0; ei < row.entries.length; ei++) {
+        const entry = row.entries[ei];
+        const key = entry[0];
+        const val = entry[1];
+        const span = val.span;
+        const widthPct = Math.max(0.3, (val.totalDurationMs / row.safeDur) * 100);
+        const isError = span.status === "ERROR";
+        const bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
+        const label = key.split(" > ").pop() || span.name;
+        html += '<div class="fg-bar" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(label) + " [" + formatDuration(val.totalDurationMs) + "]" + '">'
+          + '<span class="fg-bar-label">' + esc(label) + "</span>"
+          + "</div>";
+        leftPct += widthPct;
+      }
+      html += "</div>";
+    }
+    return html || '<div style="padding:20px;color:var(--text-dim)">No spans to display.</div>';
+  }
+
+  const fgRows = document.createElement("div");
+  fgRows.id = "fg-rows";
+  fgRows.innerHTML = buildIcicleHtml();
+
+  const tabs = document.createElement("div");
+  tabs.className = "fg-mode-tabs";
+
+  const icicleBtn = document.createElement("button");
+  icicleBtn.className = "fg-mode-tab active";
+  icicleBtn.textContent = "Icicle";
+
+  const aggBtn = document.createElement("button");
+  aggBtn.className = "fg-mode-tab";
+  aggBtn.textContent = "Aggregated";
+
+  icicleBtn.addEventListener("click", function() {
+    icicleBtn.classList.add("active");
+    aggBtn.classList.remove("active");
+    fgRows.innerHTML = buildIcicleHtml();
+  });
+
+  aggBtn.addEventListener("click", function() {
+    aggBtn.classList.add("active");
+    icicleBtn.classList.remove("active");
+    fgRows.innerHTML = buildAggregatedHtml();
+  });
+
+  tabs.appendChild(icicleBtn);
+  tabs.appendChild(aggBtn);
+
+  container.innerHTML = "";
+  container.appendChild(tabs);
+  container.appendChild(fgRows);
 }
 
 // --- Span Detail Panel ---
