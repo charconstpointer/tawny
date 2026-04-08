@@ -348,10 +348,12 @@ let currentView = "list"; // "list" | "detail" | "insights"
 let currentTraceId = null;
 let selectedSpanId = null;
 let searchQuery = "";
+let detailSearchQuery = "";
 let sortCol = "time";
 let sortAsc = true;
 let collapsedSpans = new Set();
 let selectedServices = new Set(); // empty = all selected
+let detailMatchIndex = 0;
 
 // === Stats ===
 const totalSpans = TRACES.reduce((s, t) => s + t.spanCount, 0);
@@ -634,6 +636,8 @@ function openTrace(traceId) {
   currentTraceId = traceId;
   selectedSpanId = null;
   collapsedSpans.clear();
+  detailSearchQuery = "";
+  detailMatchIndex = 0;
   detailTab = "waterfall";
   render();
 }
@@ -644,8 +648,30 @@ function renderTraceDetail() {
 
   const svcColors = assignServiceColors(trace.services);
 
-  // Toolbar: none
-  document.getElementById("toolbar-mount").innerHTML = "";
+  document.getElementById("toolbar-mount").innerHTML = '<div class="toolbar">'
+    + '<input type="text" id="detail-search-input" placeholder="Search spans…" value="' + esc(detailSearchQuery) + '">'
+    + '<button class="filter-btn" id="detail-prev-match">Prev match</button>'
+    + '<button class="filter-btn" id="detail-next-match">Next match</button>'
+    + '<button class="filter-btn" id="detail-clear-search">Clear</button>'
+    + '</div>';
+
+  document.getElementById("detail-search-input").addEventListener("input", e => {
+    detailSearchQuery = e.target.value;
+    detailMatchIndex = 0;
+    renderWaterfall(trace, svcColors);
+  });
+  document.getElementById("detail-prev-match").addEventListener("click", () => {
+    moveDetailMatch(trace, svcColors, -1);
+  });
+  document.getElementById("detail-next-match").addEventListener("click", () => {
+    moveDetailMatch(trace, svcColors, 1);
+  });
+  document.getElementById("detail-clear-search").addEventListener("click", () => {
+    detailSearchQuery = "";
+    detailMatchIndex = 0;
+    document.getElementById("detail-search-input").value = "";
+    renderWaterfall(trace, svcColors);
+  });
 
   // Breadcrumb
   document.getElementById("breadcrumb-mount").innerHTML =
@@ -692,8 +718,69 @@ function renderTraceDetail() {
   if (detailTab === "flamegraph") renderFlamegraph(trace, svcColors);
 }
 
+function collectSearchState(tree, query, collapsed) {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return {
+      matchedIds: new Set(),
+      contextIds: new Set(),
+      effectiveCollapsed: new Set(collapsed),
+    };
+  }
+
+  const matchedIds = new Set();
+  const parentMap = new Map();
+
+  function walk(spans, parentSpanId) {
+    for (const span of spans) {
+      parentMap.set(span.spanId, parentSpanId || null);
+      if (
+        span.name.toLowerCase().includes(q)
+        || span.serviceName.toLowerCase().includes(q)
+        || span.spanId.toLowerCase().includes(q)
+      ) {
+        matchedIds.add(span.spanId);
+      }
+      if (span.children.length > 0) walk(span.children, span.spanId);
+    }
+  }
+
+  walk(tree, null);
+
+  const contextIds = new Set();
+  for (const spanId of matchedIds) {
+    let current = parentMap.get(spanId);
+    while (current) {
+      contextIds.add(current);
+      current = parentMap.get(current);
+    }
+  }
+
+  const effectiveCollapsed = new Set(collapsed);
+  contextIds.forEach(spanId => effectiveCollapsed.delete(spanId));
+
+  return { matchedIds, contextIds, effectiveCollapsed };
+}
+
+function moveDetailMatch(trace, svcColors, delta) {
+  const state = collectSearchState(trace.tree, detailSearchQuery, collapsedSpans);
+  if (state.matchedIds.size === 0) return;
+  const flat = flattenTree(trace.tree, state.effectiveCollapsed).filter(item => state.matchedIds.has(item.span.spanId) || state.contextIds.has(item.span.spanId));
+  const matches = flat.filter(item => state.matchedIds.has(item.span.spanId)).map(item => item.span.spanId);
+  if (matches.length === 0) return;
+
+  detailMatchIndex = (detailMatchIndex + delta + matches.length) % matches.length;
+  selectedSpanId = matches[detailMatchIndex];
+  renderWaterfall(trace, svcColors);
+
+  const row = document.querySelector('tr[data-span="' + selectedSpanId + '"]');
+  if (row) row.scrollIntoView({ block: "center" });
+}
+
 function renderWaterfall(trace, svcColors) {
-  const flat = flattenTree(trace.tree, collapsedSpans);
+  const searchState = collectSearchState(trace.tree, detailSearchQuery, collapsedSpans);
+  const flat = flattenTree(trace.tree, searchState.effectiveCollapsed)
+    .filter(item => searchState.matchedIds.size === 0 || searchState.matchedIds.has(item.span.spanId) || searchState.contextIds.has(item.span.spanId));
   const wfScroll = document.getElementById("wf-scroll");
   const traceDur = trace.durationMs || 1;
   const traceStart = trace.startTimeMs;
@@ -716,7 +803,9 @@ function renderWaterfall(trace, svcColors) {
     const indent = item.depth * 16;
     const svcColor = svcColors[s.serviceName] || "#888";
     const isError = s.status === "ERROR";
-    const nameColor = isError ? "var(--error)" : "var(--text-bright)";
+    const isMatch = searchState.matchedIds.has(s.spanId);
+    const isContext = searchState.contextIds.has(s.spanId);
+    const nameColor = isMatch ? "var(--warn)" : isContext ? "var(--text-dim)" : isError ? "var(--error)" : "var(--text-bright)";
 
     // Toggle icon
     let toggle = '<span class="wf-toggle">&nbsp;</span>';
@@ -749,6 +838,12 @@ function renderWaterfall(trace, svcColors) {
 
   html += "</table>";
   wfScroll.innerHTML = html;
+
+  const matchCount = searchState.matchedIds.size;
+  const input = document.getElementById("detail-search-input");
+  if (input && detailSearchQuery) {
+    input.title = matchCount > 0 ? matchCount + " matches" : "No matches";
+  }
 
   // Event handlers
   wfScroll.querySelectorAll("tr[data-span]").forEach(tr => {
