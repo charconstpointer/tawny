@@ -31,6 +31,7 @@ function spanMatches(span: ParsedSpan, query: string): boolean {
   return span.name.toLowerCase().includes(q)
     || span.serviceName.toLowerCase().includes(q)
     || span.spanId.toLowerCase().includes(q)
+    || Array.from(span.attributes.values()).some(v => v.toLowerCase().includes(q))
 }
 
 function countDescendants(span: ParsedSpan): number {

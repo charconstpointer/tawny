@@ -895,6 +895,7 @@ function collectSearchState(tree, query, collapsed) {
         span.name.toLowerCase().includes(q)
         || span.serviceName.toLowerCase().includes(q)
         || span.spanId.toLowerCase().includes(q)
+        || Object.values(span.attributes).some(v => v.toLowerCase().includes(q))
       ) {
         matchedIds.add(span.spanId);
       }

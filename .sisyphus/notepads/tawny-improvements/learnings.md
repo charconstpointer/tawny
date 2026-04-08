@@ -42,6 +42,9 @@
 - Wrap interpolated attribute values with `esc()` for `data-*` and `title` attributes, even when values are usually IDs
 - A restrictive CSP meta tag works with the self-contained export as long as inline script/style and `data:` images remain allowed
 
+## [2026-04-09] Span attribute search
+- Search now matches span attribute values too: TUI uses `Map.values()`, web uses `Object.values()`.
+
 ## [2026-04-09] Parser robustness hardening
 - `Object.create(null)` is the right default for kvlist materialization to avoid prototype pollution via keys like `__proto__`
 - Malformed OTLP timestamps should be skipped at parse time instead of allowing BigInt conversion failures to abort the whole trace file
@@ -116,3 +119,19 @@ The `:root` CSS custom properties in the generated HTML use different names than
 - The web toolbar filter buttons follow the exact same string-concatenation pattern as the existing min-spans toggle, so new filters can stay compact and consistent.
 - Cycling threshold buttons are easiest to keep deterministic with a fixed array and `indexOf` + modulo, matching the established min-spans behavior.
 - Adding list filters in `getFilteredTraces()` before search/sort preserves the existing ordering and keeps the new filters composable with service and span thresholds.
+
+## Task 13: Web Keyboard Navigation
+
+- All keyboard state (`selectedRowIndex`, `selectedSpanIndex`) lives in the vanilla JS section alongside other state vars (line ~447)
+- `handleKeydown` must guard against `INPUT/TEXTAREA/SELECT` activeElement — use `tagName` check
+- `getFilteredTraces()` is used for bounds-checking the list row index
+- `getVisibleSpans()` helper (new) wraps `flattenTree` + `collectSearchState` for visible waterfall rows
+- `renderTableBody()` was changed from `for..of` to `for (let i=0;...)` loop to track index for `selected` class
+- `.trace-table tr.row.selected` CSS was needed (the `.waterfall tr.selected` already existed)
+- `#kb-hint` must use `pointer-events: none` to avoid interfering with page clicks
+- The `&middot;` HTML entity works inside template literal strings for the hint bar text
+- Playwright: `page.keyboard.press('j')` reliably fires keydown; verify with `page.$('tr.row.selected')`
+- Reset `selectedSpanIndex` in `openTrace()`, reset `selectedRowIndex` in bc-list click handlers
+- `handleKeydown` Esc/h case directly sets `currentView = "list"` and calls `render()` — this avoids calling `openTrace` (which is for detail view only)
+
+- Visual styling in TUI can be achieved cleanly with proper combinations of <text> colors without requiring CSS/HTML. Using <For> for iterated color assignments works as well as inline calls.
