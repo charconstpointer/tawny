@@ -2,6 +2,7 @@ import { readFileSync } from "fs"
 import { resolve } from "path"
 import type { TraceSummary, ParsedSpan, ParsedEvent } from "./types"
 import { THEMES, DEFAULT_THEME_ID } from "./themes"
+import { summarizeTraces } from "./insights"
 
 declare global {
   interface ImportMeta {
@@ -100,6 +101,7 @@ const logoBase64 = readFileSync(resolve(import.meta.dir, "../assets/logo.png")).
 export function generateHtml(traces: TraceSummary[], themeId?: string): string {
   const theme = THEMES[themeId ?? DEFAULT_THEME_ID] ?? THEMES[DEFAULT_THEME_ID]
   const data = JSON.stringify(traces.map(convertTrace))
+  const insights = JSON.stringify(summarizeTraces(traces))
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -136,6 +138,7 @@ a:hover{text-decoration:underline}
 .toolbar .filter-btn{background:var(--bg);border:1px solid var(--border);color:var(--text-dim);padding:5px 10px;border-radius:4px;font:inherit;cursor:pointer}
 .toolbar .filter-btn:hover{border-color:var(--accent);color:var(--text)}
 .toolbar .filter-btn.active{border-color:var(--accent);color:var(--accent)}
+.toolbar .toolbar-spacer{flex:1}
 
 /* Breadcrumb */
 .breadcrumb{padding:8px 20px;font-size:12px;color:var(--text-dim);border-bottom:1px solid var(--border);flex-shrink:0}
@@ -242,6 +245,23 @@ a:hover{text-decoration:underline}
 .fg-bc-item:hover{border-color:var(--accent);color:var(--accent);background:var(--hover)}
 .fg-bc-item.fg-bc-current{border-color:var(--accent);color:var(--accent);background:var(--hover);cursor:default}
 .fg-bc-sep{color:var(--text-dim);user-select:none}
+
+/* Insights */
+.insights{padding:20px;display:flex;flex-direction:column;gap:18px}
+.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px}
+.insight-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:8px}
+.insight-card .value{font-size:20px;color:var(--text-bright);margin-bottom:4px}
+.insight-card .sub{font-size:12px;color:var(--text-dim)}
+.insight-section{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.insight-section-header{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+.insight-table{width:100%;border-collapse:collapse}
+.insight-table td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top}
+.insight-table tr:last-child td{border-bottom:none}
+.insight-title{color:var(--text-bright)}
+.insight-detail{color:var(--text-dim)}
+.insight-action{color:var(--accent);cursor:pointer;white-space:nowrap}
+.insight-action:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -259,6 +279,7 @@ a:hover{text-decoration:underline}
 <script>
 // === Embedded trace data ===
 const TRACES = ${data};
+const INSIGHTS = ${insights};
 
 // === Helpers ===
 const SERVICE_COLORS = ${JSON.stringify(theme.servicePalette)};
@@ -323,7 +344,7 @@ const allServices = [...new Set(TRACES.flatMap(t => t.services))].sort();
 const globalServiceColors = assignServiceColors(allServices);
 
 // === State ===
-let currentView = "list"; // "list" | "detail"
+let currentView = "list"; // "list" | "detail" | "insights"
 let currentTraceId = null;
 let selectedSpanId = null;
 let searchQuery = "";
@@ -341,6 +362,12 @@ document.getElementById("stats").textContent = TRACES.length + " traces \\u00b7 
 function render() {
   if (currentView === "list") renderTraceList();
   else if (currentView === "detail") renderTraceDetail();
+  else if (currentView === "insights") renderInsights();
+}
+
+function openInsights() {
+  currentView = "insights";
+  render();
 }
 
 // --- Trace List ---
@@ -390,11 +417,17 @@ function renderTraceList() {
     + '<button class="filter-btn' + (selectedServices.size > 0 ? " active" : "") + '" id="svc-filter-btn">Services' + (selectedServices.size > 0 ? " (" + selectedServices.size + ")" : "") + '</button>'
     + '<div class="svc-filter-drop" id="svc-filter-drop" style="display:none"></div>'
     + '</div>'
+    + '<div class="toolbar-spacer"></div>'
+    + '<button class="filter-btn" id="insights-btn">Insights</button>'
     + '</div>';
 
   document.getElementById("search-input").addEventListener("input", e => {
     searchQuery = e.target.value;
     renderTableBody();
+  });
+
+  document.getElementById("insights-btn").addEventListener("click", () => {
+    openInsights();
   });
 
   const filterBtn = document.getElementById("svc-filter-btn");
@@ -512,6 +545,84 @@ function renderServiceFilter() {
       btn.textContent = "Services" + (selectedServices.size > 0 ? " (" + selectedServices.size + ")" : "");
     });
   });
+}
+
+function renderInsights() {
+  document.getElementById("toolbar-mount").innerHTML = '<div class="toolbar">'
+    + '<button class="filter-btn" id="back-to-list">Back to traces</button>'
+    + '<div class="toolbar-spacer"></div>'
+    + '<button class="filter-btn" id="refresh-insights">Refresh summary</button>'
+    + '</div>';
+
+  document.getElementById("breadcrumb-mount").innerHTML = '<div class="breadcrumb"><span id="bc-list">Traces</span> / Insights</div>';
+  document.getElementById("bc-list").addEventListener("click", () => { currentView = "list"; render(); });
+  document.getElementById("back-to-list").addEventListener("click", () => { currentView = "list"; render(); });
+  document.getElementById("refresh-insights").addEventListener("click", () => { renderInsights(); });
+
+  const data = INSIGHTS;
+  const app = document.getElementById("app");
+
+  let html = '<div class="insights">';
+  html += '<div class="insights-grid">';
+  html += insightCard("Trace volume", data.overview.traceCount + ' traces', data.overview.totalSpans + ' spans across ' + data.overview.serviceCount + ' services');
+  html += insightCard("Failures", data.overview.errorTraceCount + ' traces', data.overview.totalErrors + ' error spans');
+  html += insightCard("Latency", formatDuration(data.overview.avgTraceDurationMs), 'avg trace duration');
+  html += insightCard("Tail latency", formatDuration(data.overview.p95TraceDurationMs), 'p95 trace duration');
+  html += '</div>';
+
+  html += insightTable('Slowest traces', data.slowestTraces.map(trace => ({
+    title: formatDuration(trace.durationMs) + ' · ' + esc(trace.rootSpanName),
+    detail: trace.spanCount + ' spans · ' + trace.errorCount + ' errors · ' + esc(trace.services.join(', ') || '(unknown service)'),
+    traceId: trace.traceId,
+  })));
+
+  html += insightTable('Root operations', data.hottestOperations.map(op => ({
+    title: esc(op.serviceName + ' · ' + op.spanName),
+    detail: op.count + ' traces · avg ' + formatDuration(op.avgDurationMs) + ' · max ' + formatDuration(op.maxDurationMs),
+    traceId: op.slowestTraceId,
+  })));
+
+  html += insightTable('Service health', data.serviceHealth.map(service => ({
+    title: esc(service.serviceName),
+    detail: service.traceCount + ' traces · ' + service.spanCount + ' spans · ' + service.errorCount + ' errors · avg ' + formatDuration(service.avgTraceDurationMs),
+    traceId: service.slowestTraceId,
+  })));
+
+  html += '</div>';
+  app.innerHTML = html;
+
+  app.querySelectorAll('[data-open-trace]').forEach(el => {
+    el.addEventListener('click', () => {
+      const traceId = el.getAttribute('data-open-trace');
+      if (traceId) openTrace(traceId);
+    });
+  });
+}
+
+function insightCard(title, value, sub) {
+  return '<div class="insight-card">'
+    + '<h3>' + esc(title) + '</h3>'
+    + '<div class="value">' + esc(value) + '</div>'
+    + '<div class="sub">' + esc(sub) + '</div>'
+    + '</div>';
+}
+
+function insightTable(title, rows) {
+  let html = '<div class="insight-section"><div class="insight-section-header">' + esc(title) + '</div><table class="insight-table">';
+  if (rows.length === 0) {
+    html += '<tr><td class="insight-detail">No data available.</td></tr>';
+  } else {
+    for (const row of rows) {
+      html += '<tr>'
+        + '<td><div class="insight-title">' + row.title + '</div><div class="insight-detail">' + row.detail + '</div></td>'
+        + '<td style="width:90px;text-align:right">'
+        + (row.traceId ? '<span class="insight-action" data-open-trace="' + esc(row.traceId) + '">Open trace</span>' : '')
+        + '</td>'
+        + '</tr>';
+    }
+  }
+  html += '</table></div>';
+  return html;
 }
 
 // --- Trace Detail (Waterfall / Flamegraph) ---
