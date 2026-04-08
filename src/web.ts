@@ -454,6 +454,7 @@ let sortCol = "time";
 let sortAsc = true;
 let collapsedSpans = new Set();
 let selectedServices = new Set(); // empty = all selected
+let minSpans = 0;
 let detailMatchIndex = 0;
 
 // === Stats ===
@@ -487,6 +488,9 @@ function getFilteredTraces() {
   let list = TRACES;
   if (selectedServices.size > 0) {
     list = list.filter(t => t.services.some(s => selectedServices.has(s)));
+  }
+  if (minSpans > 0) {
+    list = list.filter(t => t.spanCount >= minSpans);
   }
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -528,6 +532,7 @@ function renderTraceList() {
     + '<button class="filter-btn' + (selectedServices.size > 0 ? " active" : "") + '" id="svc-filter-btn">Services' + (selectedServices.size > 0 ? " (" + selectedServices.size + ")" : "") + '</button>'
     + '<div class="svc-filter-drop" id="svc-filter-drop" style="display:none"></div>'
     + '</div>'
+    + '<button class="filter-btn' + (minSpans > 0 ? " active" : "") + '" id="minspans-btn">' + (minSpans > 0 ? "Min spans: " + minSpans : "Min spans") + '</button>'
     + '<div class="toolbar-spacer"></div>'
     + '<button class="filter-btn" id="insights-btn">Insights</button>'
     + '</div>';
@@ -539,6 +544,12 @@ function renderTraceList() {
 
   document.getElementById("insights-btn").addEventListener("click", () => {
     openInsights();
+  });
+
+  document.getElementById("minspans-btn").addEventListener("click", () => {
+    const t = [0, 3, 5, 10, 20, 50];
+    minSpans = t[(t.indexOf(minSpans) + 1) % t.length];
+    render();
   });
 
   const filterBtn = document.getElementById("svc-filter-btn");
