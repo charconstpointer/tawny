@@ -4,7 +4,7 @@ import { useRoute } from "../context/route"
 import { useTraces } from "../context/traces"
 import { useFilter } from "../context/filter"
 import { useTheme } from "../context/theme"
-import { shortId, formatDuration, formatTimeShort, truncate } from "../util/format"
+import { shortId, formatDuration, formatTimeShort, truncate, serviceColorMap } from "../util/format"
 import type { TraceSummary } from "../types"
 
 export function TraceList() {
@@ -16,8 +16,8 @@ export function TraceList() {
   const [scrollOffset, setScrollOffset] = createSignal(0)
   // Terminal height minus chrome: title(1) + header(1) + footer(1) + statusbar(1) + search(1) = 5
   const visibleHeight = () => Math.max(5, (process.stdout.rows ?? 30) - 5)
-  // Fixed column widths: traceId(10) + spans(8) + duration(12) + time(14) + status(8) + padding(2) = 54
-  const FIXED_COLS = 54
+  // Fixed column widths: traceId(12) + spans(8) + duration(12) + time(14) + status(8) + padding(2) = 56
+  const FIXED_COLS = 56
   // ROOT SPAN gets ~60% of the flexible space, SERVICES gets the rest
   const rootSpanWidth = () => {
     const flex = Math.max(0, (process.stdout.columns ?? 120) - FIXED_COLS)
@@ -205,6 +205,8 @@ export function TraceList() {
     return f.slice(start, end)
   })
 
+  const svcColors = createMemo(() => serviceColorMap(traces.all.flatMap((t) => t.services), t.servicePalette))
+
   const statusColor = (trace: TraceSummary) => {
     if (trace.errorCount > 0) return t.colors.error
     return t.colors.success
@@ -221,7 +223,7 @@ export function TraceList() {
         paddingLeft={1}
         paddingRight={1}
       >
-        <box width={10}>
+        <box width={12}>
           <text fg={t.colors.headerFg}>TRACE ID</text>
         </box>
         <box width={rootSpanWidth()}>
@@ -260,14 +262,16 @@ export function TraceList() {
                 paddingLeft={1}
                 paddingRight={1}
               >
-                <box width={10}>
+                <box width={12}>
+                  <text fg={t.colors.accent}>{isSelected() ? "▸ " : "  "}</text>
                   <text fg={t.colors.accent2}>{shortId(trace.traceId)}</text>
                 </box>
                 <box width={rootSpanWidth()}>
                   <text fg={t.colors.headerFg}>{truncate(trace.rootSpan?.name ?? "(no root)", rootSpanWidth() - 1)}</text>
                 </box>
                 <box width={8}>
-                  <text fg={t.colors.fgDim}>{String(trace.spanCount).padStart(5)}</text>
+                  <text fg={t.colors.fgDim}>{trace.errorCount > 0 ? String(trace.spanCount) : String(trace.spanCount).padStart(5)}</text>
+                  {trace.errorCount > 0 ? <text fg={t.colors.error}>{` ERR(${trace.errorCount})`}</text> : null}
                 </box>
                 <box width={12}>
                   <text fg={t.colors.accent}>{formatDuration(trace.durationMs).padStart(9)}</text>
@@ -281,7 +285,11 @@ export function TraceList() {
                   </text>
                 </box>
                 <box flexGrow={1}>
-                  <text fg={t.colors.accent3}>{truncate(trace.services.join(", "), servicesWidth() - 1)}</text>
+                  <For each={trace.services}>
+                    {(svc, sIdx) => (
+                      <text fg={svcColors().get(svc) ?? t.colors.fg}>{svc}{sIdx() < trace.services.length - 1 ? ", " : ""}</text>
+                    )}
+                  </For>
                 </box>
               </box>
             )
@@ -299,7 +307,7 @@ export function TraceList() {
           {filter.minDurationMs > 0 ? ` (min ${filter.minDurationMs}ms)` : ""}
           {filter.selectedServices.size > 0 ? ` (filtered by ${filter.selectedServices.size} services)` : ""}
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
-          {sorted().length > 0 ? ` | ${cursor() + 1}/${sorted().length}` : ""}
+          {sorted().length > 0 ? ` | ${cursor() + 1}/${sorted().length} (${Math.round(((cursor() + 1) / Math.max(1, sorted().length)) * 100)}%)` : ""}
         </text>
       </box>
 

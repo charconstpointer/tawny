@@ -1,3 +1,4 @@
+import path from "node:path"
 import { Switch, Match, Show } from "solid-js"
 import { render, useKeyboard } from "@opentui/solid"
 import { RouteProvider, useRoute } from "./context/route"
@@ -19,6 +20,8 @@ function AppContent() {
   const route = useRoute()
   const filter = useFilter()
   const theme = useTheme()
+  const filename = process.argv.find(a => a.endsWith(".jsonl") || a.endsWith(".json"))
+  const basename = filename ? path.basename(filename) : ""
 
   useKeyboard((key) => {
     if (filter.showHelp) return
@@ -44,7 +47,7 @@ function AppContent() {
         flexDirection="row"
         paddingLeft={1}
       >
-        <text fg={theme.colors.accent}>OpenTUI Traces</text>
+        <text fg={theme.colors.accent}>OpenTUI Traces{basename ? ` — ${basename}` : ""}</text>
         <text fg={theme.colors.fgDim}> - OpenTelemetry Trace Viewer</text>
       </box>
 
