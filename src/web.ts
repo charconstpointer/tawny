@@ -471,9 +471,10 @@ const totalSpans = TRACES.reduce((s, t) => s + t.spanCount, 0);
 const statsEl = document.getElementById("stats");
 const reportSizeMb = (REPORT_BYTES / (1024 * 1024)).toFixed(1);
 const heavyReport = TRACES.length >= 200 || totalSpans >= 20000 || REPORT_BYTES >= 5 * 1024 * 1024;
-statsEl.textContent = TRACES.length + " traces \\u00b7 " + totalSpans + " spans \\u00b7 " + reportSizeMb + " MB embedded";
+function calcPercentile(vals, p) { if (!vals.length) return 0; var s = vals.slice().sort(function(a, b) { return a - b; }); return s[Math.min(s.length - 1, Math.max(0, Math.ceil(s.length * p) - 1))] || 0; }
+function updateStats() { const filtered = getFilteredTraces(); const d = filtered.map(t => t.durationMs); statsEl.textContent = filtered.length + " traces \\u00b7 " + filtered.reduce((s, t) => s + t.spanCount, 0) + " spans \\u00b7 " + reportSizeMb + " MB embedded \\u00b7 p50: " + formatDuration(calcPercentile(d, 0.5)) + "  p95: " + formatDuration(calcPercentile(d, 0.95)) + "  p99: " + formatDuration(calcPercentile(d, 0.99)); if (heavyReport) statsEl.textContent += " \\u00b7 large report"; }
+updateStats();
 if (heavyReport) {
-  statsEl.textContent += " \\u00b7 large report";
   statsEl.classList.add("warn");
   statsEl.title = "This export embeds a large dataset and may feel heavier to search or render in the browser.";
 }
@@ -629,6 +630,7 @@ function renderTableBody() {
   const tbody = document.getElementById("trace-tbody");
   if (!tbody) return;
   const filtered = getFilteredTraces();
+  updateStats();
   if (filtered.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="no-traces">⊘ No matching traces<br><span style="font-size:11px">Try adjusting filters or search query</span></td></tr>';
     return;

@@ -23,10 +23,6 @@ export function TraceList() {
     const flex = Math.max(0, (process.stdout.columns ?? 120) - FIXED_COLS)
     return Math.max(16, Math.floor(flex * 0.6))
   }
-  const servicesWidth = () => {
-    const cols = process.stdout.columns ?? 120
-    return Math.max(8, cols - FIXED_COLS - rootSpanWidth())
-  }
 
   const filtered = createMemo(() => {
     let list = traces.all
@@ -65,6 +61,9 @@ export function TraceList() {
     else if (key === "errors") list.sort((a, b) => b.errorCount - a.errorCount || b.durationMs - a.durationMs)
     return list
   })
+
+  const percentile = (vals: number[], p: number) => { const s = [...vals].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.max(0, Math.ceil(s.length * p) - 1))] ?? 0 }
+  const stats = createMemo(() => { const durations = sorted().map(t => t.durationMs); return { p50: percentile(durations, 0.5), p95: percentile(durations, 0.95), p99: percentile(durations, 0.99) } })
 
   const clampCursor = (c: number) => Math.max(0, Math.min(c, sorted().length - 1))
 
@@ -307,6 +306,7 @@ export function TraceList() {
           {filter.minDurationMs > 0 ? ` (min ${filter.minDurationMs}ms)` : ""}
           {filter.selectedServices.size > 0 ? ` (filtered by ${filter.selectedServices.size} services)` : ""}
           {filter.searchQuery ? ` (search: "${filter.searchQuery}")` : ""}
+          {sorted().length > 0 ? ` | p50: ${formatDuration(stats().p50)}  p95: ${formatDuration(stats().p95)}  p99: ${formatDuration(stats().p99)}` : ""}
           {sorted().length > 0 ? ` | ${cursor() + 1}/${sorted().length} (${Math.round(((cursor() + 1) / Math.max(1, sorted().length)) * 100)}%)` : ""}
         </text>
       </box>
