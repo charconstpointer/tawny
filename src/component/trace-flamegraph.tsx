@@ -23,6 +23,7 @@ const theme = {
   fill: "#24283b",
   error: "#f7768e",
   duration: "#7aa2f7",
+  zoom: "#e0af68",
 }
 
 const FILL = 2000
@@ -213,6 +214,8 @@ export function TraceFlamegraph() {
   const [cursor, setCursor] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const [mode, setMode] = createSignal<"icicle" | "aggregated">("icicle")
+  const [zoomSpanId, setZoomSpanId] = createSignal<string | null>(null)
+  const [zoomHistory, setZoomHistory] = createSignal<Array<string | null>>([])
 
   const visibleHeight = () => Math.max(3, (process.stdout.rows ?? 30) - 5)
 
@@ -235,9 +238,25 @@ export function TraceFlamegraph() {
     return Math.max(8, cols - labelWidth * 2 - 4)
   })
 
+  const zoomedSpan = createMemo(() => {
+    const t = trace()
+    const zId = zoomSpanId()
+    if (!t || !zId) return null
+    return t.spans.find(s => s.spanId === zId) ?? null
+  })
+
   const layoutRows = createMemo(() => {
     const t = trace()
     if (!t) return []
+    const zs = zoomedSpan()
+    if (zs) {
+      const roots = zs.children
+      if (roots.length === 0) return []
+      if (mode() === "aggregated") {
+        return buildAggregatedLayout(roots, zs.durationMs, graphWidth())
+      }
+      return buildLayout(roots, zs.durationMs, zs.startTimeNano, graphWidth())
+    }
     if (mode() === "aggregated") {
       return buildAggregatedLayout(t.tree, t.durationMs, graphWidth())
     }
@@ -326,8 +345,24 @@ export function TraceFlamegraph() {
       setMode(m => m === "icicle" ? "aggregated" : "icicle")
       syncCursor(0)
     }
+    if (key.name === "return" || key.name === "enter") {
+      const block = selectedBlock()
+      if (block && block.span.children.length > 0) {
+        setZoomHistory(h => [...h, zoomSpanId()])
+        setZoomSpanId(block.span.spanId)
+        syncCursor(0)
+      }
+    }
     if (key.name === "escape") {
-      route.back()
+      if (zoomHistory().length > 0) {
+        const history = zoomHistory()
+        const prev = history[history.length - 1] ?? null
+        setZoomHistory(h => h.slice(0, -1))
+        setZoomSpanId(prev)
+        syncCursor(0)
+      } else {
+        route.back()
+      }
     }
     if (key.name === "q") {
       process.exit(0)
@@ -341,11 +376,31 @@ export function TraceFlamegraph() {
     return rows.slice(start, end)
   })
 
+  const rulerStartNano = createMemo(() => {
+    const zs = zoomedSpan()
+    if (zs && mode() === "icicle") return zs.startTimeNano
+    return trace()?.startTimeNano ?? 0n
+  })
+
+  const rulerEndNano = createMemo(() => {
+    const zs = zoomedSpan()
+    if (zs && mode() === "icicle") return zs.endTimeNano
+    return trace()?.endTimeNano ?? 0n
+  })
+
+  const rulerDurationMs = createMemo(() => {
+    const zs = zoomedSpan()
+    if (zs) return zs.durationMs
+    return trace()?.durationMs ?? 0
+  })
+
   const infoLine = createMemo(() => {
     const selected = selectedBlock()
     const modeLabel = mode() === "icicle" ? "Icicle" : "Aggregated"
-    if (!selected) return `No spans · Mode: ${modeLabel}`
-    const value = `${selected.span.name} · ${selected.span.serviceName} · ${formatDuration(selected.span.durationMs)} · ${cursor() + 1}/${flatBlocks().length} · Mode: ${modeLabel}`
+    const zs = zoomedSpan()
+    const zoomLabel = zs ? ` [Zoomed: ${zs.serviceName}:${zs.name}]` : ""
+    if (!selected) return `No spans · Mode: ${modeLabel}${zoomLabel}`
+    const value = `${selected.span.name} · ${selected.span.serviceName} · ${formatDuration(selected.span.durationMs)} · ${cursor() + 1}/${flatBlocks().length} · Mode: ${modeLabel}${zoomLabel}`
     return truncate(value, Math.max(1, graphWidth()))
   })
 
@@ -372,13 +427,13 @@ export function TraceFlamegraph() {
         paddingLeft={1}
       >
         <box width={13}>
-          <text fg={theme.dim}>{trace() ? formatTimeShort(trace()!.startTimeNano) : "--:--:--.---"}</text>
+          <text fg={theme.dim}>{formatTimeShort(rulerStartNano())}</text>
         </box>
         <box width={rulerWidth()}>
-          <text fg={theme.rulerFg}>{formatTimeRuler(trace()?.durationMs ?? 0, rulerWidth())}</text>
+          <text fg={theme.rulerFg}>{formatTimeRuler(rulerDurationMs(), rulerWidth())}</text>
         </box>
         <box flexGrow={1}>
-          <text fg={theme.dim}>{trace() ? formatTimeShort(trace()!.endTimeNano) : "--:--:--.---"}</text>
+          <text fg={theme.dim}>{formatTimeShort(rulerEndNano())}</text>
         </box>
       </box>
 
@@ -414,7 +469,7 @@ export function TraceFlamegraph() {
       </box>
 
       <box width="100%" height={1} backgroundColor={theme.header} paddingLeft={1}>
-        <text fg={selectedBlock() ? barColor(selectedBlock()!.span) : theme.dim}>{infoLine()}</text>
+        <text fg={zoomedSpan() ? theme.zoom : (selectedBlock() ? barColor(selectedBlock()!.span) : theme.dim)}>{infoLine()}</text>
       </box>
     </box>
   )

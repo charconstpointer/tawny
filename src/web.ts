@@ -217,13 +217,18 @@ a:hover{text-decoration:underline}
 /* Flamegraph */
 .fg-container{padding:16px;overflow:auto;flex:1}
 .fg-row{position:relative;height:22px;margin-bottom:2px}
-.fg-bar{position:absolute;top:0;height:20px;border-radius:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:20px;padding:0 4px;color:#000;opacity:0.85;cursor:default;min-width:2px}
+.fg-bar{position:absolute;top:0;height:20px;border-radius:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:20px;padding:0 4px;color:#000;opacity:0.85;cursor:pointer;min-width:2px}
 .fg-bar:hover{opacity:1;z-index:1}
 .fg-bar-label{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;pointer-events:none}
 .fg-mode-tabs{display:flex;gap:6px;margin-bottom:10px}
 .fg-mode-tab{padding:3px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer}
 .fg-mode-tab:hover{background:var(--hover);color:var(--text)}
 .fg-mode-tab.active{border-color:var(--accent);color:var(--accent);background:var(--hover)}
+.fg-breadcrumb{display:flex;align-items:center;gap:4px;margin-bottom:8px;font-size:12px;flex-wrap:wrap;min-height:22px}
+.fg-bc-item{padding:2px 8px;border-radius:4px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;background:transparent}
+.fg-bc-item:hover{border-color:var(--accent);color:var(--accent);background:var(--hover)}
+.fg-bc-item.fg-bc-current{border-color:var(--accent);color:var(--accent);background:var(--hover);cursor:default}
+.fg-bc-sep{color:var(--text-dim);user-select:none}
 </style>
 </head>
 <body>
@@ -718,24 +723,66 @@ function buildAggregatedRows(tree, traceDur) {
 }
 
 function renderFlamegraph(trace, svcColors) {
-  const container = document.getElementById("fg-container");
+  var container = document.getElementById("fg-container");
   if (!container) return;
 
-  const traceDur = trace.durationMs || 1;
-  const traceStart = trace.startTimeMs;
-  const rows = [];
-  collectByDepth(trace.tree, 0, rows);
+  var fgZoomStack = [];
 
-  function buildIcicleHtml() {
-    let html = "";
-    for (let d = 0; d < rows.length; d++) {
+  function getZoomedRoots() {
+    if (fgZoomStack.length === 0) return { roots: trace.tree, dur: trace.durationMs || 1, startMs: trace.startTimeMs };
+    var top = fgZoomStack[fgZoomStack.length - 1];
+    return { roots: top.children, dur: top.durationMs || 1, startMs: top.startTimeMs };
+  }
+
+  function buildBreadcrumbEl() {
+    var bc = document.createElement("div");
+    bc.className = "fg-breadcrumb";
+
+    var traceItem = document.createElement("span");
+    traceItem.className = "fg-bc-item" + (fgZoomStack.length === 0 ? " fg-bc-current" : "");
+    traceItem.textContent = "Trace";
+    traceItem.addEventListener("click", function() {
+      if (fgZoomStack.length === 0) return;
+      fgZoomStack = [];
+      rerender();
+    });
+    bc.appendChild(traceItem);
+
+    for (var i = 0; i < fgZoomStack.length; i++) {
+      var sep = document.createElement("span");
+      sep.className = "fg-bc-sep";
+      sep.textContent = " › ";
+      bc.appendChild(sep);
+
+      var item = document.createElement("span");
+      item.className = "fg-bc-item" + (i === fgZoomStack.length - 1 ? " fg-bc-current" : "");
+      item.textContent = fgZoomStack[i].serviceName + ":" + fgZoomStack[i].name;
+      var idx = i;
+      item.addEventListener("click", function() {
+        fgZoomStack = fgZoomStack.slice(0, idx + 1);
+        rerender();
+      });
+      bc.appendChild(item);
+    }
+
+    return bc;
+  }
+
+  function buildIcicleHtml(roots, dur, startMs) {
+    var rows = [];
+    collectByDepth(roots, 0, rows);
+    var safeDur = dur > 0 ? dur : 1;
+    var html = "";
+    for (var d = 0; d < rows.length; d++) {
       html += '<div class="fg-row">';
-      for (const span of rows[d]) {
-        const leftPct = ((span.startTimeMs - traceStart) / traceDur) * 100;
-        const widthPct = Math.max(0.3, (span.durationMs / traceDur) * 100);
-        const isError = span.status === "ERROR";
-        const bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
-        html += '<div class="fg-bar" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(span.name) + " [" + formatDuration(span.durationMs) + "]" + '">'
+      for (var si = 0; si < rows[d].length; si++) {
+        var span = rows[d][si];
+        var leftPct = ((span.startTimeMs - startMs) / safeDur) * 100;
+        var widthPct = Math.max(0.3, (span.durationMs / safeDur) * 100);
+        var isError = span.status === "ERROR";
+        var bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
+        var hasChildren = span.children && span.children.length > 0;
+        html += '<div class="fg-bar" data-span-id="' + esc(span.spanId) + '" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + (hasChildren ? "" : ";opacity:0.6") + '" title="' + esc(span.name) + " [" + formatDuration(span.durationMs) + "]" + '">'
           + '<span class="fg-bar-label">' + esc(span.name) + "</span>"
           + "</div>";
       }
@@ -744,23 +791,23 @@ function renderFlamegraph(trace, svcColors) {
     return html || '<div style="padding:20px;color:var(--text-dim)">No spans to display.</div>';
   }
 
-  function buildAggregatedHtml() {
-    const aggRows = buildAggregatedRows(trace.tree, traceDur);
-    let html = "";
-    for (let ri = 0; ri < aggRows.length; ri++) {
-      const row = aggRows[ri];
+  function buildAggregatedHtml(roots, dur) {
+    var aggRows = buildAggregatedRows(roots, dur);
+    var html = "";
+    for (var ri = 0; ri < aggRows.length; ri++) {
+      var row = aggRows[ri];
       html += '<div class="fg-row" style="position:relative">';
-      let leftPct = 0;
-      for (let ei = 0; ei < row.entries.length; ei++) {
-        const entry = row.entries[ei];
-        const key = entry[0];
-        const val = entry[1];
-        const span = val.span;
-        const widthPct = Math.max(0.3, (val.totalDurationMs / row.safeDur) * 100);
-        const isError = span.status === "ERROR";
-        const bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
-        const label = key.split(" > ").pop() || span.name;
-        html += '<div class="fg-bar" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(label) + " [" + formatDuration(val.totalDurationMs) + "]" + '">'
+      var leftPct = 0;
+      for (var ei = 0; ei < row.entries.length; ei++) {
+        var entry = row.entries[ei];
+        var key = entry[0];
+        var val = entry[1];
+        var span = val.span;
+        var widthPct = Math.max(0.3, (val.totalDurationMs / row.safeDur) * 100);
+        var isError = span.status === "ERROR";
+        var bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
+        var label = key.split(" > ").pop() || span.name;
+        html += '<div class="fg-bar" data-agg-key="' + esc(key) + '" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(label) + " [" + formatDuration(val.totalDurationMs) + "]" + '">'
           + '<span class="fg-bar-label">' + esc(label) + "</span>"
           + "</div>";
         leftPct += widthPct;
@@ -770,39 +817,83 @@ function renderFlamegraph(trace, svcColors) {
     return html || '<div style="padding:20px;color:var(--text-dim)">No spans to display.</div>';
   }
 
-  const fgRows = document.createElement("div");
-  fgRows.id = "fg-rows";
-  fgRows.innerHTML = buildIcicleHtml();
+  function attachBarClickHandlers(fgRows, currentMode) {
+    var bars = fgRows.querySelectorAll(".fg-bar[data-span-id]");
+    for (var i = 0; i < bars.length; i++) {
+      bars[i].addEventListener("click", function(e) {
+        var spanId = e.currentTarget.getAttribute("data-span-id");
+        var span = findSpan(trace.tree, spanId);
+        if (!span) return;
+        if (!span.children || span.children.length === 0) return;
+        fgZoomStack.push(span);
+        rerender();
+      });
+    }
+  }
 
-  const tabs = document.createElement("div");
+  var currentMode = "icicle";
+  var fgRows = document.createElement("div");
+  fgRows.id = "fg-rows";
+
+  var bcEl = buildBreadcrumbEl();
+
+  var tabs = document.createElement("div");
   tabs.className = "fg-mode-tabs";
 
-  const icicleBtn = document.createElement("button");
+  var icicleBtn = document.createElement("button");
   icicleBtn.className = "fg-mode-tab active";
   icicleBtn.textContent = "Icicle";
 
-  const aggBtn = document.createElement("button");
+  var aggBtn = document.createElement("button");
   aggBtn.className = "fg-mode-tab";
   aggBtn.textContent = "Aggregated";
+
+  function rerender() {
+    var z = getZoomedRoots();
+    if (currentMode === "icicle") {
+      fgRows.innerHTML = buildIcicleHtml(z.roots, z.dur, z.startMs);
+      attachBarClickHandlers(fgRows, currentMode);
+    } else {
+      fgRows.innerHTML = buildAggregatedHtml(z.roots, z.dur);
+    }
+    var oldBc = container.querySelector(".fg-breadcrumb");
+    var newBc = buildBreadcrumbEl();
+    if (oldBc) {
+      container.replaceChild(newBc, oldBc);
+    } else {
+      container.insertBefore(newBc, tabs);
+    }
+  }
 
   icicleBtn.addEventListener("click", function() {
     icicleBtn.classList.add("active");
     aggBtn.classList.remove("active");
-    fgRows.innerHTML = buildIcicleHtml();
+    currentMode = "icicle";
+    var z = getZoomedRoots();
+    fgRows.innerHTML = buildIcicleHtml(z.roots, z.dur, z.startMs);
+    attachBarClickHandlers(fgRows, currentMode);
   });
 
   aggBtn.addEventListener("click", function() {
     aggBtn.classList.add("active");
     icicleBtn.classList.remove("active");
-    fgRows.innerHTML = buildAggregatedHtml();
+    currentMode = "aggregated";
+    var z = getZoomedRoots();
+    fgRows.innerHTML = buildAggregatedHtml(z.roots, z.dur);
   });
 
   tabs.appendChild(icicleBtn);
   tabs.appendChild(aggBtn);
 
+  var z = getZoomedRoots();
+  fgRows.innerHTML = buildIcicleHtml(z.roots, z.dur, z.startMs);
+
   container.innerHTML = "";
+  container.appendChild(bcEl);
   container.appendChild(tabs);
   container.appendChild(fgRows);
+
+  attachBarClickHandlers(fgRows, currentMode);
 }
 
 // --- Span Detail Panel ---
