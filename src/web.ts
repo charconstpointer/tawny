@@ -455,6 +455,8 @@ let sortAsc = true;
 let collapsedSpans = new Set();
 let selectedServices = new Set(); // empty = all selected
 let minSpans = 0;
+let errorOnly = false;
+let minDurationMs = 0;
 let detailMatchIndex = 0;
 
 // === Stats ===
@@ -492,6 +494,8 @@ function getFilteredTraces() {
   if (minSpans > 0) {
     list = list.filter(t => t.spanCount >= minSpans);
   }
+  if (errorOnly) list = list.filter(t => t.errorCount > 0);
+  if (minDurationMs > 0) list = list.filter(t => t.durationMs >= minDurationMs);
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     list = list.filter(t =>
@@ -533,6 +537,8 @@ function renderTraceList() {
     + '<div class="svc-filter-drop" id="svc-filter-drop" style="display:none"></div>'
     + '</div>'
     + '<button class="filter-btn' + (minSpans > 0 ? " active" : "") + '" id="minspans-btn">' + (minSpans > 0 ? "Min spans: " + minSpans : "Min spans") + '</button>'
+    + '<button class="filter-btn' + (errorOnly ? " active" : "") + '" id="errors-btn">' + (errorOnly ? "Errors \u2713" : "Errors") + '</button>'
+    + '<button class="filter-btn' + (minDurationMs > 0 ? " active" : "") + '" id="duration-btn">' + (minDurationMs > 0 ? "Duration: " + minDurationMs + "ms" : "Duration") + '</button>'
     + '<div class="toolbar-spacer"></div>'
     + '<button class="filter-btn" id="insights-btn">Insights</button>'
     + '</div>';
@@ -549,6 +555,17 @@ function renderTraceList() {
   document.getElementById("minspans-btn").addEventListener("click", () => {
     const t = [0, 3, 5, 10, 20, 50];
     minSpans = t[(t.indexOf(minSpans) + 1) % t.length];
+    render();
+  });
+
+  document.getElementById("errors-btn").addEventListener("click", () => {
+    errorOnly = !errorOnly;
+    render();
+  });
+
+  document.getElementById("duration-btn").addEventListener("click", () => {
+    const t = [0, 10, 50, 100, 500, 1000, 5000];
+    minDurationMs = t[(t.indexOf(minDurationMs) + 1) % t.length];
     render();
   });
 

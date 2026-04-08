@@ -111,3 +111,8 @@ The `:root` CSS custom properties in the generated HTML use different names than
 - The requested greedy algorithm is straightforward: treat spans with missing/nonexistent parents as roots, then walk each root by repeatedly choosing the child with the latest `endTimeNano`.
 - In `trace-detail.tsx`, critical-path highlighting composes cleanly with the existing search rendering by computing a memoized `Set<string>` and only changing span-name prefix/color, leaving waterfall bars untouched.
 - For traces with multiple roots or orphaned spans, selecting the root with the latest `endTimeNano` avoids incorrectly highlighting multiple disconnected branches while still preserving the simple greedy approach.
+
+## [2026-04-09] T10 — Web report error/duration filters
+- The web toolbar filter buttons follow the exact same string-concatenation pattern as the existing min-spans toggle, so new filters can stay compact and consistent.
+- Cycling threshold buttons are easiest to keep deterministic with a fixed array and `indexOf` + modulo, matching the established min-spans behavior.
+- Adding list filters in `getFilteredTraces()` before search/sort preserves the existing ordering and keeps the new filters composable with service and span thresholds.
