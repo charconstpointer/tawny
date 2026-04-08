@@ -1,0 +1,41 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Tawny" [level=1] [ref=e3]
+    - generic [ref=e4]: OpenTelemetry Trace Viewer
+    - generic [ref=e5]: 9624 traces · 29172 spans
+  - generic [ref=e229896]: Traces / 9f77fae6
+  - generic [ref=e11]:
+    - generic [ref=e229897]:
+      - generic "9f77fae6fcef50db33bb9f8e3dc28b30" [ref=e229898]: 9f77fae6fcef50db
+      - generic [ref=e229899]:
+        - generic [ref=e229900]: 9 spans
+        - generic [ref=e229901]: 1.45s
+      - generic [ref=e229902]:
+        - button "Waterfall" [ref=e229903] [cursor=pointer]
+        - button "Flamegraph" [ref=e229904] [cursor=pointer]
+    - generic [ref=e229997]:
+      - generic [ref=e229999]: Trace
+      - generic [ref=e230000]:
+        - button "Icicle" [ref=e230001] [cursor=pointer]
+        - button "Aggregated" [ref=e230002] [cursor=pointer]
+      - generic [ref=e230003]:
+        - generic "RunCommandOnServer [1.45s]" [ref=e230005] [cursor=pointer]:
+          - generic: RunCommandOnServer
+        - generic [ref=e230006]:
+          - generic "cluster.Service.SSHToServer [1.17s]" [ref=e230007] [cursor=pointer]:
+            - generic: cluster.Service.SSHToServer
+          - generic "ssh.Output [274.36ms]" [ref=e230008] [cursor=pointer]:
+            - generic: ssh.Output
+        - generic [ref=e230009]:
+          - generic "vault.SSHService.GetSigner [1.17s]" [ref=e230010] [cursor=pointer]:
+            - generic: vault.SSHService.GetSigner
+          - generic "cluster.Service.SSHToServer.AdminAddrPort [375µs]" [ref=e230011] [cursor=pointer]:
+            - generic: cluster.Service.SSHToServer.AdminAddrPort
+          - generic "cluster.Service.SSHToServer.AdminAddrPort [57µs]" [ref=e230012] [cursor=pointer]:
+            - generic: cluster.Service.SSHToServer.AdminAddrPort
+          - generic "ssh.Client.newClientWithClientConfig [12µs]" [ref=e230013] [cursor=pointer]:
+            - generic: ssh.Client.newClientWithClientConfig
+          - generic "ssh.Session.fn [25.75ms]" [ref=e230014] [cursor=pointer]:
+            - generic: ssh.Session.fn
+        - generic "ssh.dialWithContext [165.19ms]" [ref=e230016] [cursor=pointer]:
+          - generic: ssh.dialWithContext

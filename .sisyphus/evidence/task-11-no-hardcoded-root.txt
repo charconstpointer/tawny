@@ -1,0 +1,8 @@
+command: grep -A 20 ':root {' src/web.ts | grep -E '#[0-9a-fA-F]{6}'
+exit_code: 1
+
+stdout:
+
+
+stderr:
+

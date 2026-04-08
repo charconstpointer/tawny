@@ -1,0 +1,4 @@
+13:      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Enter/l", "open"], ["/", "search"], ["f", "filter"], ["n", "min spans"], ["t", "theme"], ["q", "quit"])
+15:      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["f", "flamegraph"], ["t", "theme"], ["q", "quit"])
+17:      base.push(["j/k", "scroll"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["h", "back"], ["t", "theme"], ["q", "quit"])
+19:      base.push(["m", "mode"], ["Enter", "zoom"], ["Esc", "back"], ["j/k", "nav"], ["h/l", "left/right"], ["t", "theme"], ["g/G", "top/bottom"])

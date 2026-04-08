@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Tawny" [level=1] [ref=e3]
+    - generic [ref=e4]: OpenTelemetry Trace Viewer
+    - generic [ref=e5]: 9624 traces · 29172 spans
+  - generic [ref=e316684]: Traces / 2153ac78
+  - generic [ref=e11]:
+    - generic [ref=e316685]:
+      - generic "2153ac785bbd3336afdbc8a535bde7e2" [ref=e316686]: 2153ac785bbd3336
+      - generic [ref=e316687]:
+        - generic [ref=e316688]: 1 spans
+        - generic [ref=e316689]: 4.36ms
+      - generic [ref=e316690]:
+        - button "Waterfall" [ref=e316691] [cursor=pointer]
+        - button "Flamegraph" [ref=e316692] [cursor=pointer]
+    - generic [ref=e316715]:
+      - generic [ref=e316717]: Trace
+      - generic [ref=e316718]:
+        - button "Icicle" [ref=e316719] [cursor=pointer]
+        - button "Aggregated" [ref=e316720] [cursor=pointer]
+      - generic "lock.TryLock [4.36ms]" [ref=e316723] [cursor=pointer]:
+        - generic: lock.TryLock

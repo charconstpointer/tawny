@@ -1,0 +1,11 @@
+TMUX QA: 't' key from trace-list opens ThemePicker
+Captured pane showed:
+  ╭─────────────Select Theme─────────────╮
+  │  [✓] Tokyo Night                     │
+  │  [ ] Catppuccin Mocha                │
+  │  [ ] Dracula                         │
+  │  [ ] Nord                            │
+  │  [ ] Gruvbox Dark                    │
+  ╰──Enter: confirm | Esc: cancel────────╯
+PASS: Theme picker appeared after 't' key
+PASS: Escape dismissed it cleanly

@@ -1,0 +1,5 @@
+TMUX QA: mutual exclusion between service filter and theme picker
+1. Opened service filter with 'f' -> service filter modal shown
+2. Sent 't' key -> service filter gone, theme picker appeared
+PASS: filter.closeServiceFilter() called before theme.openThemePicker()
+PASS: Theme picker is now visible, service filter dismissed

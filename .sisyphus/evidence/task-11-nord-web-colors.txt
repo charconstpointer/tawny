@@ -1,0 +1,11 @@
+command: bun run src/index.tsx --web --theme nord /tmp/tawny-theme-test.jsonl
+exit_code: 0
+
+stderr:
+
+
+grep_exit_code: 0
+
+grep_output:
+  --bg:#2e3440;--surface:#3b4252;--border:#434c5e;
+

@@ -1,0 +1,10 @@
+src/component/trace-list.tsx:57:    if (t.showThemePicker) return
+src/component/trace-list.tsx:58:    if (key.name === "t") { filter.closeServiceFilter(); t.openThemePicker(); return }
+src/component/trace-detail.tsx:116:    if (themeCtx.showThemePicker) return
+src/component/trace-detail.tsx:117:    if (key.name === "t") { filter.closeServiceFilter(); themeCtx.openThemePicker(); return }
+src/component/span-detail.tsx:82:    if (t.showThemePicker) return
+src/component/span-detail.tsx:83:    if (key.name === "t") { filter.closeServiceFilter(); t.openThemePicker(); return }
+src/component/trace-flamegraph.tsx:330:    if (themeCtx.showThemePicker) return
+src/component/trace-flamegraph.tsx:331:    if (key.name === "t") { filter.closeServiceFilter(); themeCtx.openThemePicker(); return }
+src/component/service-filter.tsx:20:    if (t.showThemePicker) return
+src/component/service-filter.tsx:47:      filter.closeServiceFilter()

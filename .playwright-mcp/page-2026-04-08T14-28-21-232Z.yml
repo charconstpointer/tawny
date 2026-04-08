@@ -1,0 +1,91 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Tawny" [level=1] [ref=e3]
+    - generic [ref=e4]: OpenTelemetry Trace Viewer
+    - generic [ref=e5]: 9624 traces · 29172 spans
+  - generic [ref=e229896]: Traces / 9f77fae6
+  - generic [ref=e11]:
+    - generic [ref=e229897]:
+      - generic "9f77fae6fcef50db33bb9f8e3dc28b30" [ref=e229898]: 9f77fae6fcef50db
+      - generic [ref=e229899]:
+        - generic [ref=e229900]: 9 spans
+        - generic [ref=e229901]: 1.45s
+      - generic [ref=e229902]:
+        - button "Waterfall" [ref=e229903] [cursor=pointer]
+        - button "Flamegraph" [ref=e229904] [cursor=pointer]
+    - table [ref=e229907]:
+      - rowgroup [ref=e229908]:
+        - row "0ns 500.00ms 1.00s" [ref=e229909] [cursor=pointer]:
+          - cell [ref=e229910]
+          - cell "0ns 500.00ms 1.00s" [ref=e229911]:
+            - generic [ref=e229912]:
+              - generic [ref=e229913]: 0ns
+              - generic [ref=e229914]: 500.00ms
+              - generic [ref=e229915]: 1.00s
+        - row "▼ RunCommandOnServer e2e 1.45s" [ref=e229916] [cursor=pointer]:
+          - cell "▼ RunCommandOnServer e2e 1.45s" [ref=e229917]:
+            - generic [ref=e229918]:
+              - generic [ref=e229919]: ▼
+              - generic "RunCommandOnServer" [ref=e229920]
+              - generic [ref=e229921]: e2e
+              - generic [ref=e229922]: 1.45s
+          - cell [ref=e229923]
+        - row "▼ cluster.Service.SSHToServer e2e 1.17s" [ref=e229925] [cursor=pointer]:
+          - cell "▼ cluster.Service.SSHToServer e2e 1.17s" [ref=e229926]:
+            - generic [ref=e229927]:
+              - generic [ref=e229928]: ▼
+              - generic "cluster.Service.SSHToServer" [ref=e229929]
+              - generic [ref=e229930]: e2e
+              - generic [ref=e229931]: 1.17s
+          - cell [ref=e229932]
+        - row "vault.SSHService.GetSigner e2e 1.17s" [ref=e229934] [cursor=pointer]:
+          - cell "vault.SSHService.GetSigner e2e 1.17s" [ref=e229935]:
+            - generic [ref=e229936]:
+              - generic "vault.SSHService.GetSigner" [ref=e229938]
+              - generic [ref=e229939]: e2e
+              - generic [ref=e229940]: 1.17s
+          - cell [ref=e229941]
+        - row "cluster.Service.SSHToServer.AdminAddrPort e2e 375µs" [ref=e229943] [cursor=pointer]:
+          - cell "cluster.Service.SSHToServer.AdminAddrPort e2e 375µs" [ref=e229944]:
+            - generic [ref=e229945]:
+              - generic "cluster.Service.SSHToServer.AdminAddrPort" [ref=e229947]
+              - generic [ref=e229948]: e2e
+              - generic [ref=e229949]: 375µs
+          - cell [ref=e229950]
+        - row "cluster.Service.SSHToServer.AdminAddrPort e2e 57µs" [ref=e229952] [cursor=pointer]:
+          - cell "cluster.Service.SSHToServer.AdminAddrPort e2e 57µs" [ref=e229953]:
+            - generic [ref=e229954]:
+              - generic "cluster.Service.SSHToServer.AdminAddrPort" [ref=e229956]
+              - generic [ref=e229957]: e2e
+              - generic [ref=e229958]: 57µs
+          - cell [ref=e229959]
+        - row "▼ ssh.Client.newClientWithClientConfig e2e 12µs" [ref=e229961] [cursor=pointer]:
+          - cell "▼ ssh.Client.newClientWithClientConfig e2e 12µs" [ref=e229962]:
+            - generic [ref=e229963]:
+              - generic [ref=e229964]: ▼
+              - generic "ssh.Client.newClientWithClientConfig" [ref=e229965]
+              - generic [ref=e229966]: e2e
+              - generic [ref=e229967]: 12µs
+          - cell [ref=e229968]
+        - row "ssh.dialWithContext e2e 165.19ms" [ref=e229970] [cursor=pointer]:
+          - cell "ssh.dialWithContext e2e 165.19ms" [ref=e229971]:
+            - generic [ref=e229972]:
+              - generic "ssh.dialWithContext" [ref=e229974]
+              - generic [ref=e229975]: e2e
+              - generic [ref=e229976]: 165.19ms
+          - cell [ref=e229977]
+        - row "▼ ssh.Output e2e 274.36ms" [ref=e229979] [cursor=pointer]:
+          - cell "▼ ssh.Output e2e 274.36ms" [ref=e229980]:
+            - generic [ref=e229981]:
+              - generic [ref=e229982]: ▼
+              - generic "ssh.Output" [ref=e229983]
+              - generic [ref=e229984]: e2e
+              - generic [ref=e229985]: 274.36ms
+          - cell [ref=e229986]
+        - row "ssh.Session.fn e2e 25.75ms" [ref=e229988] [cursor=pointer]:
+          - cell "ssh.Session.fn e2e 25.75ms" [ref=e229989]:
+            - generic [ref=e229990]:
+              - generic "ssh.Session.fn" [ref=e229992]
+              - generic [ref=e229993]: e2e
+              - generic [ref=e229994]: 25.75ms
+          - cell [ref=e229995]

@@ -1,0 +1,14 @@
+command: bun run src/index.tsx --web --theme catppuccin-mocha /tmp/tawny-theme-test.jsonl
+exit_code: 0
+
+grep_exit_code: 0
+
+grep_output:
+const SERVICE_COLORS = ["#89b4fa","#cba6f7","#89dceb","#a6e3a1","#f9e2af","#f38ba8","#94e2d5","#fab387","#a6adc8","#f5c2e7"];
+
+function assignServiceColors(services) {
+--
+  for (let i = 0; i < sorted.length; i++) map[sorted[i]] = SERVICE_COLORS[i % SERVICE_COLORS.length];
+  return map;
+}
+

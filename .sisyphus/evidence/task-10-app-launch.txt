@@ -1,0 +1,5 @@
+App launch: bun run src/index.tsx /tmp/test-traces.jsonl
+Status: LAUNCHED OK
+Stderr (/tmp/tawny-t10-err.txt): EMPTY (no errors)
+Traces displayed: 2 traces (api-service GET /api/users, frontend page.load)
+Status bar showed: t theme hint

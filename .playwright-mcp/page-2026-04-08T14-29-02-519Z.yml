@@ -1,0 +1,40 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Tawny" [level=1] [ref=e3]
+    - generic [ref=e4]: OpenTelemetry Trace Viewer
+    - generic [ref=e5]: 9624 traces · 29172 spans
+  - generic [ref=e229896]: Traces / 9f77fae6
+  - generic [ref=e11]:
+    - generic [ref=e229897]:
+      - generic "9f77fae6fcef50db33bb9f8e3dc28b30" [ref=e229898]: 9f77fae6fcef50db
+      - generic [ref=e229899]:
+        - generic [ref=e229900]: 9 spans
+        - generic [ref=e229901]: 1.45s
+      - generic [ref=e229902]:
+        - button "Waterfall" [ref=e229903] [cursor=pointer]
+        - button "Flamegraph" [ref=e229904] [cursor=pointer]
+    - generic [ref=e229997]:
+      - generic [ref=e230017]:
+        - generic [ref=e230018] [cursor=pointer]: Trace
+        - generic [ref=e230019]: ›
+        - generic [ref=e230020]: e2e:RunCommandOnServer
+      - generic [ref=e230000]:
+        - button "Icicle" [ref=e230001] [cursor=pointer]
+        - button "Aggregated" [ref=e230002] [cursor=pointer]
+      - generic [ref=e230003]:
+        - generic [ref=e230032]:
+          - generic "e2e:cluster.Service.SSHToServer [1.17s]" [ref=e230033] [cursor=pointer]:
+            - generic: e2e:cluster.Service.SSHToServer
+          - generic "e2e:ssh.Output [274.36ms]" [ref=e230034] [cursor=pointer]:
+            - generic: e2e:ssh.Output
+        - generic [ref=e230035]:
+          - generic "e2e:cluster.Service.SSHToServer.AdminAddrPort [432µs]" [ref=e230036] [cursor=pointer]:
+            - generic: e2e:cluster.Service.SSHToServer.AdminAddrPort
+          - generic "e2e:ssh.Client.newClientWithClientConfig [12µs]" [ref=e230037] [cursor=pointer]:
+            - generic: e2e:ssh.Client.newClientWithClientConfig
+          - generic "e2e:ssh.Session.fn [25.75ms]" [ref=e230038] [cursor=pointer]:
+            - generic: e2e:ssh.Session.fn
+          - generic "e2e:vault.SSHService.GetSigner [1.17s]" [ref=e230039] [cursor=pointer]:
+            - generic: e2e:vault.SSHService.GetSigner
+        - generic "e2e:ssh.dialWithContext [165.19ms]" [ref=e230041] [cursor=pointer]:
+          - generic: e2e:ssh.dialWithContext
