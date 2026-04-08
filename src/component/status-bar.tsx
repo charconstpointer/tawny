@@ -19,6 +19,8 @@ export function StatusBar() {
       base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["q", "quit"])
     } else if (r.type === "span-detail") {
       base.push(["j/k", "scroll"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["h", "back"], ["q", "quit"])
+    } else if (r.type === "trace-flamegraph") {
+      base.push(["m", "mode"], ["Enter", "zoom"], ["Esc", "back"], ["j/k", "nav"], ["h/l", "left/right"], ["g/G", "top/bottom"])
     }
 
     return base
