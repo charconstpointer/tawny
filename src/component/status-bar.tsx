@@ -16,7 +16,7 @@ export function StatusBar() {
     if (r.type === "trace-list") {
       base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Enter/l", "open"], ["/", "search"], ["f", "filter"], ["n", "min spans"], ["q", "quit"])
     } else if (r.type === "trace-detail") {
-      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["q", "quit"])
+      base.push(["j/k", "navigate"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["Space", "fold"], ["Enter/l", "detail"], ["h", "back"], ["/", "search"], ["f", "flamegraph"], ["q", "quit"])
     } else if (r.type === "span-detail") {
       base.push(["j/k", "scroll"], ["g/G", "top/bottom"], ["^d/^u", "page"], ["h", "back"], ["q", "quit"])
     } else if (r.type === "trace-flamegraph") {
