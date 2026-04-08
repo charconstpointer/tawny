@@ -1,0 +1,2 @@
+16:    if (theme.showThemePicker) {
+24:    if (!theme.showThemePicker) return

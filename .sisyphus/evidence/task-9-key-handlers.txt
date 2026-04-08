@@ -1,0 +1,11 @@
+4:import { writeConfig } from "../config"
+9:  const [originalThemeId, setOriginalThemeId] = createSignal(theme.id)
+24:    if (!theme.showThemePicker) return
+44:    if (key.name === "return") {
+47:      writeConfig({ theme: selectedId })
+48:      theme.closeThemePicker()
+50:    if (key.name === "escape") {
+51:      theme.setTheme(originalThemeId())
+52:      theme.closeThemePicker()
+56:  return (
+79:          return (
