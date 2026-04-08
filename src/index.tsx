@@ -37,6 +37,10 @@ function main() {
     return idx !== -1 ? args[idx + 1] : undefined
   })()
   const fileArgs = args.filter((a, i) => a !== "--web" && a !== "--theme" && args[i - 1] !== "--theme")
+  const configTheme = readConfig().theme
+  const resolvedThemeId = (themeArg && themeArg in THEMES ? themeArg : undefined)
+    ?? (configTheme && configTheme in THEMES ? configTheme : undefined)
+    ?? DEFAULT_THEME_ID
 
   if (fileArgs.length === 0) {
     console.error("Error: no input file specified.")
@@ -63,14 +67,9 @@ function main() {
   }
 
   if (webMode) {
-    process.stdout.write(generateHtml(traces))
+    process.stdout.write(generateHtml(traces, resolvedThemeId))
     return
   }
-
-  const configTheme = readConfig().theme
-  const resolvedThemeId = (themeArg && themeArg in THEMES ? themeArg : undefined)
-    ?? (configTheme && configTheme in THEMES ? configTheme : undefined)
-    ?? DEFAULT_THEME_ID
 
   console.log(`Loaded ${traces.length} traces with ${traces.reduce((sum, t) => sum + t.spanCount, 0)} total spans`)
 

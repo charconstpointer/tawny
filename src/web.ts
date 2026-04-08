@@ -1,6 +1,7 @@
 import { readFileSync } from "fs"
 import { resolve } from "path"
 import type { TraceSummary, ParsedSpan, ParsedEvent } from "./types"
+import { THEMES, DEFAULT_THEME_ID } from "./themes"
 
 declare global {
   interface ImportMeta {
@@ -96,7 +97,8 @@ const logoBase64 = readFileSync(resolve(import.meta.dir, "../assets/logo.png")).
 
 // --- HTML generation ---
 
-export function generateHtml(traces: TraceSummary[]): string {
+export function generateHtml(traces: TraceSummary[], themeId?: string): string {
+  const theme = THEMES[themeId ?? DEFAULT_THEME_ID] ?? THEMES[DEFAULT_THEME_ID]
   const data = JSON.stringify(traces.map(convertTrace))
 
   return `<!DOCTYPE html>
@@ -108,10 +110,10 @@ export function generateHtml(traces: TraceSummary[]): string {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#1a1b26;--surface:#24283b;--border:#3b4261;
-  --text:#c0caf5;--text-dim:#565f89;--text-bright:#e0e0e0;
-  --accent:#7aa2f7;--error:#f7768e;--ok:#9ece6a;--warn:#e0af68;
-  --hover:#292e42;--selected:#33394d;
+  --bg:${theme.colors.bg};--surface:${theme.colors.bgAlt};--border:${theme.colors.border};
+  --text:${theme.colors.fg};--text-dim:${theme.colors.fgDim};--text-bright:${theme.colors.fg};
+  --accent:${theme.colors.accent};--error:${theme.colors.error};--ok:${theme.colors.success};--warn:${theme.colors.warning};
+  --hover:${theme.colors.bgHighlight};--selected:${theme.colors.bgHighlight};
   font-family:"JetBrains Mono","Fira Code","SF Mono",Menlo,Consolas,monospace;
   font-size:13px;color:var(--text);background:var(--bg);
 }
@@ -259,10 +261,7 @@ a:hover{text-decoration:underline}
 const TRACES = ${data};
 
 // === Helpers ===
-const SERVICE_COLORS = [
-  "#7dcfff","#bb9af7","#7aa2f7","#9ece6a","#e0af68",
-  "#ff9e64","#f7768e","#2ac3de","#b4f9f8","#c0caf5"
-];
+const SERVICE_COLORS = ${JSON.stringify(theme.servicePalette)};
 
 function assignServiceColors(services) {
   const sorted = [...services].sort();
