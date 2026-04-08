@@ -18,7 +18,7 @@ export function SpanDetail() {
   const filter = useFilter()
   const t = useTheme()
   const [scrollOffset, setScrollOffset] = createSignal(0)
-  const visibleHeight = 30
+  const visibleHeight = () => Math.max(5, (process.stdout.rows ?? 30) - 5)
 
   const span = createMemo(() => {
     if (route.data.type !== "span-detail") return undefined
@@ -75,7 +75,7 @@ export function SpanDetail() {
     return r
   })
 
-  const maxScroll = () => Math.max(0, rows().length - visibleHeight)
+  const maxScroll = () => Math.max(0, rows().length - visibleHeight())
 
   useKeyboard((key) => {
     if (route.data.type !== "span-detail") return
@@ -97,20 +97,20 @@ export function SpanDetail() {
     }
     // Ctrl+d / Ctrl+u — half page down / up
     if (key.ctrl && key.name === "d") {
-      const half = Math.floor(visibleHeight / 2)
+      const half = Math.floor(visibleHeight() / 2)
       setScrollOffset((o) => Math.min(o + half, maxScroll()))
     }
     if (key.ctrl && key.name === "u") {
-      const half = Math.floor(visibleHeight / 2)
+      const half = Math.floor(visibleHeight() / 2)
       setScrollOffset((o) => Math.max(0, o - half))
     }
     // Ctrl+f / Ctrl+b — full page down / up
     if (key.ctrl && key.name === "f") {
-      const page = visibleHeight - 2
+      const page = visibleHeight() - 2
       setScrollOffset((o) => Math.min(o + page, maxScroll()))
     }
     if (key.ctrl && key.name === "b") {
-      const page = visibleHeight - 2
+      const page = visibleHeight() - 2
       setScrollOffset((o) => Math.max(0, o - page))
     }
     // h / Esc — go back
@@ -123,7 +123,7 @@ export function SpanDetail() {
   })
 
   const visibleRows = createMemo(() => {
-    return rows().slice(scrollOffset(), scrollOffset() + visibleHeight)
+    return rows().slice(scrollOffset(), scrollOffset() + visibleHeight())
   })
 
   const statusColor = () => {
@@ -183,8 +183,8 @@ export function SpanDetail() {
       {/* Footer */}
       <box width="100%" height={1} backgroundColor={t.colors.border} paddingLeft={1}>
         <text fg={t.colors.fgDim}>
-          {rows().length > visibleHeight
-            ? `Scroll: ${scrollOffset() + 1}-${Math.min(scrollOffset() + visibleHeight, rows().length)}/${rows().length}`
+          {rows().length > visibleHeight()
+            ? `Scroll: ${scrollOffset() + 1}-${Math.min(scrollOffset() + visibleHeight(), rows().length)}/${rows().length}`
             : `${rows().length} fields`}
         </text>
       </box>
