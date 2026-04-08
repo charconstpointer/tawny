@@ -101,13 +101,24 @@ const logoBase64 = readFileSync(resolve(import.meta.dir, "../assets/logo.png")).
 export function generateHtml(traces: TraceSummary[], themeId?: string): string {
   const theme = THEMES[themeId ?? DEFAULT_THEME_ID] ?? THEMES[DEFAULT_THEME_ID]
   const data = JSON.stringify(traces.map(convertTrace))
+    .replace(/<\//g, "<\\/")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
   const insights = JSON.stringify(summarizeTraces(traces))
+    .replace(/<\//g, "<\\/")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+  const reportBytes = JSON.stringify(Buffer.byteLength(data, "utf8"))
+    .replace(/<\//g, "<\\/")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:;">
 <title>Tawny &mdash; OpenTelemetry Traces</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -281,7 +292,7 @@ a:hover{text-decoration:underline}
 // === Embedded trace data ===
 const TRACES = ${data};
 const INSIGHTS = ${insights};
-const REPORT_BYTES = ${Buffer.byteLength(data, "utf8")};
+const REPORT_BYTES = ${reportBytes};
 
 // === Helpers ===
 const SERVICE_COLORS = ${JSON.stringify(theme.servicePalette)};
@@ -503,8 +514,8 @@ function renderTableBody() {
       const c = globalServiceColors[s] || "#888";
       return '<span class="svc-tag" style="color:' + c + ";border-color:" + c + '44">' + esc(s) + "</span>";
     }).join("");
-    html += '<tr class="row" data-trace="' + t.traceId + '">'
-      + '<td class="col-id" title="' + t.traceId + '">' + shortId(t.traceId) + "</td>"
+    html += '<tr class="row" data-trace="' + esc(t.traceId) + '">'
+      + '<td class="col-id" title="' + esc(t.traceId) + '">' + shortId(t.traceId) + "</td>"
       + '<td class="col-root" title="' + esc(t.rootSpanName) + '">' + esc(t.rootSpanName) + "</td>"
       + '<td class="col-spans">' + t.spanCount + "</td>"
       + '<td class="col-duration">' + formatDuration(t.durationMs) + "</td>"
@@ -691,7 +702,7 @@ function renderTraceDetail() {
   const app = document.getElementById("app");
   app.innerHTML =
     '<div class="detail-header">'
-    + '<span class="trace-id" title="' + trace.traceId + '">' + shortId(trace.traceId, 16) + "</span>"
+    + '<span class="trace-id" title="' + esc(trace.traceId) + '">' + shortId(trace.traceId, 16) + "</span>"
     + '<div class="trace-meta">'
     + '<span>' + trace.spanCount + " spans</span>"
     + "<span>" + formatDuration(trace.durationMs) + "</span>"
@@ -833,7 +844,7 @@ function renderWaterfall(trace, svcColors) {
     const widthPct = Math.max((s.durationMs / traceDur) * 100, 0.3);
 
     const selCls = selectedSpanId === s.spanId ? " selected" : "";
-    html += '<tr class="' + selCls + '" data-span="' + s.spanId + '">'
+    html += '<tr class="' + selCls + '" data-span="' + esc(s.spanId) + '">'
       + '<td class="wf-label-cell" style="width:' + labelPct + '%"><div class="wf-label">'
       + toggle
       + '<span class="wf-indent" style="width:' + indent + 'px"></span>'
@@ -1147,7 +1158,7 @@ function renderSpanPanel(trace, spanId, svcColors) {
   html += field("Trace ID", trace.traceId);
   if (span.parentSpanId) html += field("Parent Span", span.parentSpanId);
   html += field("Kind", span.kind);
-  html += field("Status", '<span class="' + (span.status === "ERROR" ? "badge-error" : span.status === "OK" ? "badge-ok" : "badge-unset") + '">' + span.status + "</span>");
+  html += fieldHtml("Status", '<span class="' + (span.status === "ERROR" ? "badge-error" : span.status === "OK" ? "badge-ok" : "badge-unset") + '">' + esc(span.status) + "</span>");
   if (span.statusMessage) html += field("Message", span.statusMessage);
   html += "</div>";
 
@@ -1160,7 +1171,7 @@ function renderSpanPanel(trace, spanId, svcColors) {
 
   // Service
   html += '<div class="span-section"><h3>Service</h3>';
-  html += field("Service", '<span style="color:' + svcColor + '">' + esc(span.serviceName) + "</span>");
+  html += fieldHtml("Service", '<span style="color:' + svcColor + '">' + esc(span.serviceName) + "</span>");
   if (span.serviceVersion) html += field("Version", span.serviceVersion);
   if (span.scopeName) html += field("Scope", span.scopeName);
   if (span.scopeVersion) html += field("Scope Version", span.scopeVersion);
@@ -1217,7 +1228,11 @@ function findSpan(tree, spanId) {
 }
 
 function field(label, value) {
-  return '<div class="span-field"><span class="label">' + label + '</span><span class="value">' + value + "</span></div>";
+  return '<div class="span-field"><span class="label">' + esc(label) + '</span><span class="value">' + esc(value) + "</span></div>";
+}
+
+function fieldHtml(label, html) {
+  return '<div class="span-field"><span class="label">' + esc(label) + '</span><span class="value">' + html + "</span></div>";
 }
 
 // === Init ===
