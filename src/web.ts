@@ -207,6 +207,19 @@ a:hover{text-decoration:underline}
 .status-dot.error{background:var(--error)}
 .status-dot.ok{background:var(--ok)}
 .status-dot.unset{background:var(--text-dim)}
+
+/* View tabs */
+.view-tabs{display:flex;gap:4px;margin-left:auto}
+.view-tab{background:none;border:1px solid var(--border);color:var(--text-dim);padding:3px 12px;border-radius:4px;font:inherit;font-size:12px;cursor:pointer}
+.view-tab:hover{border-color:var(--accent);color:var(--text)}
+.view-tab.active{border-color:var(--accent);color:var(--accent);background:var(--hover)}
+
+/* Flamegraph */
+.fg-container{padding:16px;overflow:auto;flex:1}
+.fg-row{position:relative;height:22px;margin-bottom:2px}
+.fg-bar{position:absolute;top:0;height:20px;border-radius:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:20px;padding:0 4px;color:#000;opacity:0.85;cursor:default;min-width:2px}
+.fg-bar:hover{opacity:1;z-index:1}
+.fg-bar-label{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;pointer-events:none}
 </style>
 </head>
 <body>
@@ -481,13 +494,16 @@ function renderServiceFilter() {
   });
 }
 
-// --- Trace Detail (Waterfall) ---
+// --- Trace Detail (Waterfall / Flamegraph) ---
+
+let detailTab = "waterfall";
 
 function openTrace(traceId) {
   currentView = "detail";
   currentTraceId = traceId;
   selectedSpanId = null;
   collapsedSpans.clear();
+  detailTab = "waterfall";
   render();
 }
 
@@ -505,14 +521,44 @@ function renderTraceDetail() {
     '<div class="breadcrumb"><span id="bc-list">Traces</span> / ' + shortId(trace.traceId) + "</div>";
   document.getElementById("bc-list").addEventListener("click", () => { currentView = "list"; render(); });
 
-  // Layout: waterfall + optional span panel
   const app = document.getElementById("app");
-  app.innerHTML = '<div class="waterfall-container">'
+  app.innerHTML =
+    '<div class="detail-header">'
+    + '<span class="trace-id" title="' + trace.traceId + '">' + shortId(trace.traceId, 16) + "</span>"
+    + '<div class="trace-meta">'
+    + '<span>' + trace.spanCount + " spans</span>"
+    + "<span>" + formatDuration(trace.durationMs) + "</span>"
+    + "</div>"
+    + '<div class="view-tabs">'
+    + '<button class="view-tab' + (detailTab === "waterfall" ? " active" : "") + '" id="tab-waterfall">Waterfall</button>'
+    + '<button class="view-tab' + (detailTab === "flamegraph" ? " active" : "") + '" id="tab-flamegraph">Flamegraph</button>'
+    + "</div>"
+    + "</div>"
+    + '<div class="waterfall-container" id="wf-container" style="' + (detailTab === "waterfall" ? "" : "display:none") + '">'
     + '<div class="waterfall-scroll" id="wf-scroll"></div>'
     + '<div class="span-panel" id="span-panel" style="display:none"></div>'
-    + '</div>';
+    + "</div>"
+    + '<div class="fg-container" id="fg-container" style="' + (detailTab === "flamegraph" ? "" : "display:none") + '"></div>';
+
+  document.getElementById("tab-waterfall").addEventListener("click", () => {
+    detailTab = "waterfall";
+    document.getElementById("wf-container").style.display = "";
+    document.getElementById("fg-container").style.display = "none";
+    document.getElementById("tab-waterfall").className = "view-tab active";
+    document.getElementById("tab-flamegraph").className = "view-tab";
+  });
+
+  document.getElementById("tab-flamegraph").addEventListener("click", () => {
+    detailTab = "flamegraph";
+    document.getElementById("wf-container").style.display = "none";
+    document.getElementById("fg-container").style.display = "";
+    document.getElementById("tab-waterfall").className = "view-tab";
+    document.getElementById("tab-flamegraph").className = "view-tab active";
+    renderFlamegraph(trace, svcColors);
+  });
 
   renderWaterfall(trace, svcColors);
+  if (detailTab === "flamegraph") renderFlamegraph(trace, svcColors);
 }
 
 function renderWaterfall(trace, svcColors) {
@@ -619,6 +665,43 @@ function renderRulerTicks(durationMs) {
     html += '<div class="wf-ruler-tick" style="left:' + pct + '%">' + formatDuration(t) + "</div>";
   }
   return html;
+}
+
+// --- Flamegraph ---
+
+function collectByDepth(tree, depth, rows) {
+  for (const span of tree) {
+    if (!rows[depth]) rows[depth] = [];
+    rows[depth].push(span);
+    if (span.children.length > 0) collectByDepth(span.children, depth + 1, rows);
+  }
+}
+
+function renderFlamegraph(trace, svcColors) {
+  const container = document.getElementById("fg-container");
+  if (!container) return;
+
+  const traceDur = trace.durationMs || 1;
+  const traceStart = trace.startTimeMs;
+  const rows = [];
+  collectByDepth(trace.tree, 0, rows);
+
+  let html = "";
+  for (let d = 0; d < rows.length; d++) {
+    html += '<div class="fg-row">';
+    for (const span of rows[d]) {
+      const leftPct = ((span.startTimeMs - traceStart) / traceDur) * 100;
+      const widthPct = Math.max(0.3, (span.durationMs / traceDur) * 100);
+      const isError = span.status === "ERROR";
+      const bg = isError ? "#f7768e" : (svcColors[span.serviceName] || "#888");
+      html += '<div class="fg-bar" style="left:' + leftPct + "%;width:" + widthPct + "%;background:" + bg + '" title="' + esc(span.name) + " [" + formatDuration(span.durationMs) + "]" + '">'
+        + '<span class="fg-bar-label">' + esc(span.name) + "</span>"
+        + "</div>";
+    }
+    html += "</div>";
+  }
+
+  container.innerHTML = html || '<div style="padding:20px;color:var(--text-dim)">No spans to display.</div>';
 }
 
 // --- Span Detail Panel ---
