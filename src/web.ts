@@ -167,7 +167,7 @@ a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 
 /* Header */
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.header{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,0.2);padding:10px 20px;display:flex;align-items:center;gap:16px;flex-shrink:0}
 .header img{display:block;flex-shrink:0}
 .header h1{font-size:15px;font-weight:600;color:var(--text-bright)}
 .header .subtitle{color:var(--text-dim);font-size:12px}
@@ -184,7 +184,7 @@ a:hover{text-decoration:underline}
 .toolbar input[type=text]::placeholder{color:var(--text-dim)}
 .toolbar .filter-btn{background:var(--bg);border:1px solid var(--border);color:var(--text-dim);padding:5px 10px;border-radius:4px;font:inherit;cursor:pointer}
 .toolbar .filter-btn:hover{border-color:var(--accent);color:var(--text)}
-.toolbar .filter-btn.active{border-color:var(--accent);color:var(--accent)}
+.toolbar .filter-btn.active{border-color:var(--accent);background:var(--accent);color:var(--bg)}
 .toolbar .toolbar-spacer{flex:1}
 
 /* Breadcrumb */
@@ -204,6 +204,7 @@ a:hover{text-decoration:underline}
 .trace-table tr.row{cursor:pointer}
 .trace-table tr.row:hover{background:var(--hover)}
 .trace-table tr.row.selected{background:var(--selected)}
+.trace-table tr.row:nth-child(even){background:var(--surface)}
 .trace-table .col-id{font-family:inherit;color:var(--text-dim);font-size:12px;max-width:100px}
 .trace-table .col-root{color:var(--text-bright);max-width:none}
 .trace-table .col-spans{text-align:right;color:var(--text-dim);width:70px}
@@ -240,7 +241,8 @@ a:hover{text-decoration:underline}
 .wf-ruler-tick{position:absolute;bottom:0;border-left:1px solid var(--border);height:8px;padding-left:4px;white-space:nowrap}
 
 /* Span detail panel */
-.span-panel{border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;position:fixed;right:0;top:0;bottom:0;width:420px;z-index:20;box-shadow:-4px 0 16px rgba(0,0,0,0.4)}
+.span-panel{border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;position:fixed;right:0;top:0;bottom:0;width:420px;z-index:20;box-shadow:-4px 0 16px rgba(0,0,0,0.4);transform:translateX(100%);transition:transform 0.15s ease-out}
+.span-panel.open{transform:translateX(0)}
 .span-panel-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .span-panel-header .close-btn{margin-left:auto;cursor:pointer;color:var(--text-dim);font-size:16px;background:none;border:none;font:inherit;padding:2px 6px;border-radius:3px}
 .span-panel-header .close-btn:hover{background:var(--hover);color:var(--text)}
@@ -267,8 +269,8 @@ a:hover{text-decoration:underline}
 .svc-filter-wrap{position:relative}
 
 /* Status dot */
-.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
-.status-dot.error{background:var(--error)}
+.status-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+.status-dot.error{background:var(--error);box-shadow:0 0 4px var(--error)}
 .status-dot.ok{background:var(--ok)}
 .status-dot.unset{background:var(--text-dim)}
 
@@ -623,7 +625,7 @@ function renderTableBody() {
   if (!tbody) return;
   const filtered = getFilteredTraces();
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="no-traces">No matching traces</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="no-traces">⊘ No matching traces<br><span style="font-size:11px">Try adjusting filters or search query</span></td></tr>';
     return;
   }
   let html = "";
@@ -835,7 +837,7 @@ function renderTraceDetail() {
     + "</div>"
     + '<div class="waterfall-container" id="wf-container" style="' + (detailTab === "waterfall" ? "" : "display:none") + '">'
     + '<div class="waterfall-scroll" id="wf-scroll"></div>'
-    + '<div class="span-panel" id="span-panel" style="display:none"></div>'
+    + '<div class="span-panel" id="span-panel"></div>'
     + "</div>"
     + '<div class="fg-container" id="fg-container" style="' + (detailTab === "flamegraph" ? "" : "display:none") + '"></div>';
 
@@ -974,7 +976,7 @@ function renderWaterfall(trace, svcColors) {
       + '<span class="wf-dur">' + formatDuration(s.durationMs) + "</span>"
       + '</div></td>'
       + '<td class="wf-bar-cell" style="width:' + (100 - labelPct) + '%;position:relative">'
-      + '<div class="wf-bar" style="left:' + offsetPct + "%;width:" + widthPct + "%;background:" + svcColor + '"></div>'
+      + '<div class="wf-bar" style="left:' + offsetPct + "%;width:" + widthPct + "%;background:" + svcColor + ";border-left:2px solid " + svcColor + '"></div>'
       + "</td></tr>";
   }
 
@@ -1262,7 +1264,7 @@ function renderSpanPanel(trace, spanId, svcColors) {
   if (!span) return;
 
   const panel = document.getElementById("span-panel");
-  panel.style.display = "block";
+  panel.classList.add("open");
 
   const statusCls = span.status === "ERROR" ? "error" : span.status === "OK" ? "ok" : "unset";
   const svcColor = svcColors[span.serviceName] || "#888";
@@ -1333,7 +1335,7 @@ function renderSpanPanel(trace, spanId, svcColors) {
 
   document.getElementById("close-span").addEventListener("click", () => {
     selectedSpanId = null;
-    panel.style.display = "none";
+    panel.classList.remove("open");
     // Remove selected class
     document.querySelectorAll(".waterfall tr.selected").forEach(tr => tr.classList.remove("selected"));
   });
